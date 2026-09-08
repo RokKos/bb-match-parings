@@ -274,6 +274,7 @@ const html = `<!doctype html>
         <div class="section-title"><h2>How to read this</h2><span>Model notes</span></div>
         <ul class="method-list">
           <li><strong>Projected nation result</strong>Each fixture is classified by its score rate. A nation wins when guaranteed wins outnumber guaranteed losses; draws add zero.</li>
+          <li><strong>Unique national rosters</strong>Each roster can be selected only once within a Nation. Both opposing Nations may still use the same roster.</li>
           <li><strong>Nation certainty</strong>The model combines the observed win, draw and loss frequencies of all eight independent fixtures. It reports the chance of finishing with more actual wins than losses.</li>
           <li><strong>Sample strength</strong>Low is fewer than 10 historical games, medium is 10–29, and high is 30 or more. Certainty reflects results, not data quality, so inspect small samples carefully.</li>
           <li><strong>Data recovery</strong>Roster aliases are merged. If one matchup direction is missing, the reciprocal record is reversed and marked as derived. No-data pairings stay neutral.</li>
@@ -310,7 +311,15 @@ const html = `<!doctype html>
         const stored = JSON.parse(localStorage.getItem(STORAGE_KEY));
         if (!stored || !Array.isArray(stored.home) || !Array.isArray(stored.away) || stored.home.length !== 8 || stored.away.length !== 8) return freshState();
         const valid = (entry) => ({ coach: String(entry.coach || "").slice(0, 40), roster: ROSTERS.includes(entry.roster) ? entry.roster : ROSTERS[0] });
-        return { homeName: String(stored.homeName || "Slovenia").slice(0, 32), awayName: String(stored.awayName || "Opponent").slice(0, 32), home: stored.home.map(valid), away: stored.away.map(valid) };
+        const unique = (entries) => {
+          const used = new Set();
+          return entries.map(valid).map((entry) => {
+            if (used.has(entry.roster)) entry.roster = ROSTERS.find((roster) => !used.has(roster));
+            used.add(entry.roster);
+            return entry;
+          });
+        };
+        return { homeName: String(stored.homeName || "Slovenia").slice(0, 32), awayName: String(stored.awayName || "Opponent").slice(0, 32), home: unique(stored.home), away: unique(stored.away) };
       } catch { return freshState(); }
     }
 
@@ -318,7 +327,13 @@ const html = `<!doctype html>
     const $ = (selector) => document.querySelector(selector);
     const pct = (value, digits = 1) => (value * 100).toFixed(digits) + "%";
     const escapeHtml = (value) => String(value).replace(/[&<>'"]/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" })[char]);
-    const options = (selected) => ROSTERS.map((roster) => \`<option value="\${escapeHtml(roster)}"\${roster === selected ? " selected" : ""}>\${escapeHtml(roster)}</option>\`).join("");
+    const options = (selected, side, index) => {
+      const used = new Set(state[side].filter((_, slot) => slot !== index).map((entry) => entry.roster));
+      return ROSTERS.map((roster) => {
+        const unavailable = used.has(roster);
+        return \`<option value="\${escapeHtml(roster)}"\${roster === selected ? " selected" : ""}\${unavailable ? " disabled" : ""}>\${escapeHtml(roster)}\${unavailable ? " · already selected" : ""}</option>\`;
+      }).join("");
+    };
 
     function matchup(home, away) {
       let raw = DATA[home] && DATA[home][away];
@@ -360,12 +375,12 @@ const html = `<!doctype html>
           <span class="slot">\${String(index + 1).padStart(2, "0")}</span>
           <div class="team-entry">
             <input class="field coach" data-side="home" data-index="\${index}" value="\${escapeHtml(state.home[index].coach)}" placeholder="Coach" aria-label="Nation A coach \${index + 1}">
-            <select class="field roster" data-side="home" data-index="\${index}" aria-label="Nation A roster \${index + 1}">\${options(state.home[index].roster)}</select>
+            <select class="field roster" data-side="home" data-index="\${index}" aria-label="Nation A roster \${index + 1}">\${options(state.home[index].roster, "home", index)}</select>
           </div>
           <div class="rate"><strong>\${row.g ? pct(row.rate) : "N/A"}</strong><small>Nation A</small></div>
           <div class="team-entry away-entry">
             <input class="field coach" data-side="away" data-index="\${index}" value="\${escapeHtml(state.away[index].coach)}" placeholder="Coach" aria-label="Nation B coach \${index + 1}">
-            <select class="field roster" data-side="away" data-index="\${index}" aria-label="Nation B roster \${index + 1}">\${options(state.away[index].roster)}</select>
+            <select class="field roster" data-side="away" data-index="\${index}" aria-label="Nation B roster \${index + 1}">\${options(state.away[index].roster, "away", index)}</select>
           </div>
           <div class="stat"><strong>\${row.g ? \`\${row.w}–\${row.d}–\${row.l}\` : "No record"}</strong><small>W–D–L</small></div>
           <div class="stat"><strong>\${row.g || "—"}</strong><small>played</small></div>
