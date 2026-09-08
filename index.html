@@ -1,0 +1,441 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>Eightfold | Nation Matchup Lab</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #101310;
+      --panel: #171b17;
+      --panel-2: #1d221d;
+      --line: #343b34;
+      --line-bright: #4a5449;
+      --text: #f1f3ec;
+      --muted: #9ba49a;
+      --accent: #d9f34a;
+      --accent-ink: #161a0d;
+      --win: #8fcd76;
+      --draw: #c3bba2;
+      --loss: #e37b68;
+      --radius: 12px;
+      --mono: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+      --sans: "Avenir Next", Avenir, "Segoe UI Variable", "Segoe UI", sans-serif;
+    }
+    * { box-sizing: border-box; }
+    html { min-width: 320px; background: var(--bg); }
+    body { margin: 0; color: var(--text); background: var(--bg); font-family: var(--sans); line-height: 1.45; }
+    button, input, select { font: inherit; }
+    button, select, input { color: inherit; }
+    button { cursor: pointer; }
+    .shell { width: min(1480px, calc(100% - 40px)); margin: 0 auto; }
+    .topbar { min-height: 72px; display: flex; align-items: center; justify-content: space-between; gap: 24px; border-bottom: 1px solid var(--line); }
+    .brand { display: flex; align-items: center; gap: 13px; min-width: 0; }
+    .mark { width: 34px; height: 34px; display: grid; grid-template-columns: repeat(2, 1fr); gap: 3px; transform: rotate(45deg); flex: 0 0 auto; }
+    .mark i { display: block; border: 1px solid var(--line-bright); background: var(--panel-2); }
+    .mark i:first-child, .mark i:last-child { background: var(--accent); border-color: var(--accent); }
+    .brand strong { display: block; font-size: 14px; letter-spacing: .11em; text-transform: uppercase; }
+    .brand span { color: var(--muted); font: 10px var(--mono); letter-spacing: .08em; text-transform: uppercase; }
+    .top-actions { display: flex; gap: 8px; }
+    .button { min-height: 38px; padding: 0 14px; border: 1px solid var(--line-bright); border-radius: 8px; background: transparent; font-size: 12px; font-weight: 650; transition: background .16s ease, border-color .16s ease, transform .1s ease; }
+    .button:hover { background: var(--panel-2); border-color: var(--muted); }
+    .button:active { transform: translateY(1px); }
+    .button.primary { color: var(--accent-ink); background: var(--accent); border-color: var(--accent); }
+    .button.primary:hover { background: #e4fa6f; }
+    .hero { display: grid; grid-template-columns: minmax(0, 1.45fr) minmax(310px, .55fr); gap: 56px; align-items: end; padding: 58px 0 38px; }
+    .eyebrow { margin: 0 0 16px; color: var(--accent); font: 11px var(--mono); letter-spacing: .15em; text-transform: uppercase; }
+    h1 { max-width: 780px; margin: 0; font-size: clamp(42px, 5.2vw, 76px); line-height: .94; letter-spacing: -.055em; font-weight: 650; }
+    .hero-copy { max-width: 480px; justify-self: end; color: var(--muted); font-size: 15px; }
+    .hero-copy strong { color: var(--text); font-weight: 600; }
+    .legend { display: flex; flex-wrap: wrap; gap: 16px; margin-top: 20px; font: 11px var(--mono); color: var(--muted); }
+    .legend span { display: inline-flex; align-items: center; gap: 7px; }
+    .dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+    .c-win { color: var(--win); } .c-draw { color: var(--draw); } .c-loss { color: var(--loss); }
+    .scoreboard { border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel); overflow: hidden; }
+    .score-grid { display: grid; grid-template-columns: minmax(0, 1fr) 120px minmax(0, 1fr); min-height: 172px; }
+    .nation-summary { padding: 26px; display: flex; flex-direction: column; justify-content: space-between; min-width: 0; }
+    .nation-summary.away { text-align: right; }
+    .nation-label { color: var(--muted); font: 10px var(--mono); letter-spacing: .14em; text-transform: uppercase; }
+    .nation-name-display { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: clamp(20px, 2vw, 30px); font-weight: 650; letter-spacing: -.03em; }
+    .record { display: flex; gap: 12px; align-items: baseline; font: 12px var(--mono); color: var(--muted); }
+    .away .record { justify-content: flex-end; }
+    .record b { font-size: 17px; color: var(--text); }
+    .verdict { display: flex; flex-direction: column; align-items: center; justify-content: center; border-inline: 1px solid var(--line); background: #131713; text-align: center; }
+    .verdict strong { font-size: 40px; line-height: 1; letter-spacing: -.06em; }
+    .verdict span { margin-top: 9px; font: 10px var(--mono); letter-spacing: .12em; text-transform: uppercase; }
+    .probability-row { display: grid; grid-template-columns: repeat(3, 1fr); border-top: 1px solid var(--line); }
+    .probability { padding: 17px 22px; border-right: 1px solid var(--line); }
+    .probability:last-child { border-right: 0; }
+    .probability small { display: block; margin-bottom: 5px; color: var(--muted); font: 10px var(--mono); letter-spacing: .08em; text-transform: uppercase; }
+    .probability strong { font: 20px var(--mono); }
+    .prob-track { height: 3px; margin-top: 10px; overflow: hidden; background: var(--line); }
+    .prob-track i { display: block; width: 0; height: 100%; background: currentColor; transition: width .35s ease; }
+    .workspace { margin: 24px 0 70px; border-top: 1px solid var(--line); }
+    .workspace-head, .matchup-row { display: grid; grid-template-columns: 34px minmax(210px, 1fr) 88px minmax(210px, 1fr) 114px 78px 78px 78px 88px 30px; gap: 12px; align-items: center; }
+    .workspace-head { min-height: 54px; color: var(--muted); font: 10px var(--mono); letter-spacing: .1em; text-transform: uppercase; }
+    .head-away { text-align: right; }
+    .matchup-row { min-height: 98px; border-top: 1px solid var(--line); position: relative; }
+    .matchup-row:last-child { border-bottom: 1px solid var(--line); }
+    .matchup-row::before { content: ""; position: absolute; left: 0; top: 20px; bottom: 20px; width: 2px; background: var(--status-color, var(--draw)); opacity: .8; }
+    .slot { color: var(--muted); font: 12px var(--mono); text-align: center; }
+    .team-entry { display: grid; grid-template-columns: minmax(0, .72fr) minmax(0, 1.28fr); gap: 8px; }
+    .away-entry { direction: rtl; }
+    .away-entry > * { direction: ltr; }
+    .field { width: 100%; height: 42px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); padding: 0 11px; outline: none; font-size: 13px; transition: border-color .16s ease, background .16s ease; }
+    .field:hover { border-color: var(--line-bright); }
+    .field:focus { border-color: var(--accent); background: var(--panel-2); box-shadow: 0 0 0 2px rgba(217,243,74,.12); }
+    input.field::placeholder { color: #737b72; opacity: 1; }
+    select.field { appearance: none; padding-right: 32px; background-image: linear-gradient(45deg, transparent 50%, var(--muted) 50%), linear-gradient(135deg, var(--muted) 50%, transparent 50%); background-position: calc(100% - 16px) 18px, calc(100% - 11px) 18px; background-size: 5px 5px; background-repeat: no-repeat; }
+    .rate { text-align: center; }
+    .rate strong { display: block; color: var(--status-color, var(--draw)); font: 20px var(--mono); }
+    .rate small { color: var(--muted); font: 9px var(--mono); text-transform: uppercase; letter-spacing: .09em; }
+    .stat { text-align: right; }
+    .stat strong { display: block; font: 13px var(--mono); }
+    .stat small { color: var(--muted); font-size: 10px; }
+    .outcome { justify-self: end; min-width: 78px; padding: 7px 8px; border: 1px solid currentColor; border-radius: 7px; color: var(--status-color, var(--draw)); font: 10px var(--mono); text-align: center; text-transform: uppercase; letter-spacing: .08em; }
+    .detail-button { width: 30px; height: 30px; border: 1px solid var(--line); border-radius: 7px; color: var(--muted); background: transparent; font: 17px var(--mono); }
+    .detail-button:hover, .detail-button[aria-expanded="true"] { color: var(--text); border-color: var(--line-bright); background: var(--panel-2); }
+    .matchup-detail { grid-column: 2 / -1; display: none; grid-template-columns: 1.15fr 1fr 1fr 1fr 1fr; gap: 1px; margin: -5px 0 18px; background: var(--line); border: 1px solid var(--line); }
+    .matchup-detail.open { display: grid; }
+    .detail-cell { min-height: 76px; padding: 14px 16px; background: var(--panel); }
+    .detail-cell small { display: block; margin-bottom: 7px; color: var(--muted); font: 9px var(--mono); letter-spacing: .08em; text-transform: uppercase; }
+    .detail-cell strong { font: 15px var(--mono); font-weight: 500; }
+    .detail-cell.note strong { font-family: var(--sans); font-size: 12px; line-height: 1.45; }
+    .insights { display: grid; grid-template-columns: 1.15fr .85fr; gap: 24px; margin-top: 28px; }
+    .insight-panel { border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel); padding: 24px; }
+    .section-title { display: flex; justify-content: space-between; align-items: baseline; gap: 20px; margin-bottom: 20px; }
+    .section-title h2 { margin: 0; font-size: 18px; letter-spacing: -.025em; }
+    .section-title span { color: var(--muted); font: 10px var(--mono); }
+    .swing-list { display: grid; gap: 1px; background: var(--line); border: 1px solid var(--line); }
+    .swing-item { display: grid; grid-template-columns: 32px minmax(0, 1fr) auto; gap: 12px; align-items: center; min-height: 58px; padding: 0 14px; background: var(--panel); }
+    .swing-item .num { color: var(--muted); font: 10px var(--mono); }
+    .swing-item strong { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; }
+    .swing-item small { color: var(--muted); font-size: 10px; }
+    .swing-value { color: var(--status-color, var(--draw)); font: 14px var(--mono); }
+    .method-list { margin: 0; padding: 0; list-style: none; display: grid; gap: 18px; }
+    .method-list li { padding-left: 18px; border-left: 2px solid var(--line-bright); color: var(--muted); font-size: 12px; }
+    .method-list strong { display: block; margin-bottom: 4px; color: var(--text); font-size: 12px; }
+    .footnote { margin: 22px 0 0; color: var(--muted); font: 10px/1.55 var(--mono); }
+    .empty { color: var(--muted); font-size: 12px; }
+    .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
+    @media (max-width: 1180px) {
+      .workspace { overflow-x: auto; }
+      .workspace-head, .matchup-row { min-width: 1060px; }
+      .matchup-detail { min-width: 1014px; }
+    }
+    @media (max-width: 760px) {
+      .shell { width: min(100% - 24px, 1480px); }
+      .topbar { min-height: 62px; }
+      .brand span { display: none; }
+      .button { padding: 0 10px; }
+      .button-label { display: none; }
+      .hero { grid-template-columns: 1fr; gap: 20px; padding: 42px 0 30px; }
+      h1 { max-width: 590px; font-size: clamp(40px, 13vw, 62px); }
+      .hero-copy { justify-self: start; }
+      .score-grid { grid-template-columns: 1fr 72px 1fr; min-height: 148px; }
+      .nation-summary { padding: 17px 12px; }
+      .nation-name-display { font-size: 18px; }
+      .record { gap: 7px; font-size: 10px; }
+      .record b { font-size: 14px; }
+      .verdict strong { font-size: 28px; }
+      .probability-row { grid-template-columns: 1fr; }
+      .probability { border-right: 0; border-bottom: 1px solid var(--line); }
+      .probability:last-child { border-bottom: 0; }
+      .insights { grid-template-columns: 1fr; }
+      .insight-panel { padding: 18px; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; }
+    }
+    @media print {
+      :root { color-scheme: light; --bg: #fff; --panel: #fff; --panel-2: #f5f5f2; --line: #c9ccc5; --line-bright: #92988f; --text: #171a17; --muted: #596158; --accent: #607400; --accent-ink: #fff; --win: #39732b; --draw: #6b6558; --loss: #a73e2d; }
+      .top-actions, .detail-button { display: none; }
+      .hero { padding-top: 30px; }
+      .workspace { overflow: visible; }
+      .workspace-head, .matchup-row { min-width: 0; }
+      .insights { break-inside: avoid; }
+    }
+  </style>
+</head>
+<body>
+  <header class="shell topbar">
+    <div class="brand">
+      <span class="mark" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+      <div><strong>Eightfold</strong><span>Nation matchup lab</span></div>
+    </div>
+    <div class="top-actions">
+      <button class="button" id="swapButton" type="button" title="Swap nations">⇄ <span class="button-label">Swap sides</span></button>
+      <button class="button" id="resetButton" type="button">Reset</button>
+      <button class="button primary" id="printButton" type="button">Print <span class="button-label">report</span></button>
+    </div>
+  </header>
+
+  <main class="shell">
+    <section class="hero">
+      <div>
+        <p class="eyebrow">European championship planning / 8 fixtures</p>
+        <h1>Read the matchup before kickoff.</h1>
+      </div>
+      <div class="hero-copy">
+        Build two nations of eight coaches. Every roster change recalculates the projected score and historical certainty. <strong>Score rate includes half a point per draw.</strong>
+        <div class="legend" aria-label="Outcome thresholds">
+          <span class="c-win"><i class="dot"></i>&gt;55% win</span>
+          <span class="c-draw"><i class="dot"></i>45–55% draw</span>
+          <span class="c-loss"><i class="dot"></i>&lt;45% loss</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="scoreboard" aria-label="Nation result summary">
+      <div class="score-grid">
+        <div class="nation-summary">
+          <label class="nation-label" for="homeName">Nation A</label>
+          <input class="sr-only" id="homeName" value="Slovenia" maxlength="32">
+          <div class="nation-name-display" id="homeNameDisplay" title="Click to rename" tabindex="0" role="button">Slovenia</div>
+          <div class="record" id="homeRecord"></div>
+        </div>
+        <div class="verdict" id="verdict"></div>
+        <div class="nation-summary away">
+          <label class="nation-label" for="awayName">Nation B</label>
+          <input class="sr-only" id="awayName" value="Opponent" maxlength="32">
+          <div class="nation-name-display" id="awayNameDisplay" title="Click to rename" tabindex="0" role="button">Opponent</div>
+          <div class="record" id="awayRecord"></div>
+        </div>
+      </div>
+      <div class="probability-row" id="probabilities"></div>
+    </section>
+
+    <section class="workspace" aria-label="Eight roster matchups">
+      <div class="workspace-head">
+        <span>#</span><span>Nation A coach / roster</span><span class="head-away">Score rate</span><span class="head-away">Nation B roster / coach</span><span>Historical record</span><span>Games</span><span>No-loss</span><span>Sample</span><span>Verdict</span><span></span>
+      </div>
+      <div id="matchups"></div>
+    </section>
+
+    <section class="insights">
+      <article class="insight-panel">
+        <div class="section-title"><h2>Pairing leverage</h2><span>Ranked by distance from 50%</span></div>
+        <div class="swing-list" id="swingList"></div>
+      </article>
+      <article class="insight-panel">
+        <div class="section-title"><h2>How to read this</h2><span>Model notes</span></div>
+        <ul class="method-list">
+          <li><strong>Projected nation result</strong>Each fixture is classified by its score rate. A nation wins when guaranteed wins outnumber guaranteed losses; draws add zero.</li>
+          <li><strong>Nation certainty</strong>The model combines the observed win, draw and loss frequencies of all eight independent fixtures. It reports the chance of finishing with more actual wins than losses.</li>
+          <li><strong>Sample strength</strong>Low is fewer than 10 historical games, medium is 10–29, and high is 30 or more. Certainty reflects results, not data quality, so inspect small samples carefully.</li>
+          <li><strong>Data recovery</strong>Roster aliases are merged. If one matchup direction is missing, the reciprocal record is reversed and marked as derived. No-data pairings stay neutral.</li>
+        </ul>
+        <p class="footnote" id="dataNote"></p>
+      </article>
+    </section>
+  </main>
+
+  <script>
+    "use strict";
+    const DATA = {"Amazon":{"Ogre":[7,5,1,1,0],"Snotling":[10,7,0,3,0],"Black Orc":[8,5,1,2,0],"Dwarf":[14,7,4,3,0],"Norse":[14,6,6,2,0],"Imperial Nobility":[11,5,4,2,0],"Underworld Denizens":[15,7,5,3,0],"Chaos Renegades":[9,5,1,3,0],"Chaos Chosen":[14,6,5,3,0],"Gnome":[10,4,4,2,0],"Lizardmen":[30,14,8,8,0],"Chaos Dwarf":[15,5,8,2,0],"Tomb Kings":[26,10,9,7,0],"Halfling":[9,5,0,4,0],"Vampire":[14,5,4,5,0],"Amazon":[4,1,2,1,0],"Orc":[33,12,9,12,0],"Old World Alliance":[25,9,6,10,0],"Nurgle":[23,8,6,9,0],"Wood Elf":[19,5,8,6,0],"High Elf":[60,20,16,24,0],"Necromantic Horror":[27,7,11,9,0],"Shambling Undead":[18,6,3,9,0],"Khorne":[12,4,2,6,0],"Bretonnian":[24,6,8,10,0],"Slann":[11,3,3,5,0],"Dark Elf":[38,11,8,19,0],"Elf Union":[12,3,3,6,0],"Goblin":[7,1,3,3,0],"Human":[24,5,7,12,0],"Skaven":[13,1,3,9,0]},"Black Orc":{"Norse":[7,6,0,1,0],"Chaos Dwarf":[10,5,4,1,0],"Halfling":[8,5,1,2,0],"Snotling":[8,5,1,2,0],"Gnome":[7,3,2,2,0],"Black Orc":[14,7,0,7,0],"Dwarf":[8,3,2,3,0],"Skaven":[11,4,3,4,0],"Bretonnian":[21,8,4,9,0],"Necromantic Horror":[29,9,8,12,0],"Lizardmen":[26,8,7,11,0],"Vampire":[8,3,1,4,0],"Chaos Chosen":[10,3,2,5,0],"Chaos Renegades":[10,2,4,4,0],"Dark Elf":[29,9,5,15,0],"Old World Alliance":[14,4,3,7,0],"Imperial Nobility":[9,3,1,5,0],"Tomb Kings":[25,8,3,14,0],"Human":[20,6,3,11,0],"Wood Elf":[16,4,4,8,0],"High Elf":[41,9,12,20,0],"Shambling Undead":[11,3,2,6,0],"Ogre":[7,2,1,4,0],"Underworld Denizens":[9,2,2,5,0],"Goblin":[9,2,2,5,0],"Slann":[11,1,5,5,0],"Amazon":[8,2,1,5,0],"Khorne":[18,3,5,10,0],"Orc":[28,5,6,17,0],"Nurgle":[23,3,5,15,0],"Elf Union":[9,1,2,6,0]},"Bretonnian":{"Goblin":[12,9,2,1,0],"Ogre":[19,12,5,2,0],"Dwarf":[12,8,1,3,0],"Halfling":[12,7,3,2,0],"Tomb Kings":[24,13,6,5,0],"Lizardmen":[39,20,9,10,0],"Imperial Nobility":[14,6,5,3,0],"Elf Union":[19,10,3,6,0],"Gnome":[10,6,0,4,0],"Amazon":[24,10,8,6,0],"Necromantic Horror":[32,14,9,9,0],"Nurgle":[46,19,14,13,0],"Chaos Renegades":[16,6,6,4,0],"Underworld Denizens":[12,6,1,5,0],"Snotling":[12,5,3,4,0],"Norse":[16,7,3,6,0],"Black Orc":[21,9,4,8,0],"Shambling Undead":[24,8,9,7,0],"Bretonnian":[32,13,6,13,0],"Slann":[14,6,2,6,0],"Chaos Chosen":[14,6,2,6,0],"Vampire":[14,6,2,6,0],"High Elf":[82,33,16,33,0],"Wood Elf":[27,9,8,10,0],"Khorne":[18,6,5,7,0],"Old World Alliance":[34,13,6,15,0],"Skaven":[16,6,3,7,0],"Chaos Dwarf":[14,5,3,6,0],"Orc":[49,17,10,22,0],"Dark Elf":[56,15,17,24,0],"Human":[35,9,7,19,0]},"Chaos Chosen":{"Chaos Dwarf":[10,6,2,2,0],"Gnome":[10,6,2,2,0],"Ogre":[11,5,4,2,0],"Halfling":[5,2,2,1,0],"Black Orc":[10,5,2,3,0],"Vampire":[11,5,3,3,0],"Imperial Nobility":[11,5,3,3,0],"Old World Alliance":[17,10,0,7,0],"Orc":[36,14,14,8,0],"Slann":[6,3,1,2,0],"Shambling Undead":[23,8,10,5,0],"Necromantic Horror":[47,19,12,16,0],"Tomb Kings":[23,9,6,8,0],"Bretonnian":[14,6,2,6,0],"Underworld Denizens":[6,3,0,3,0],"Chaos Chosen":[20,4,12,4,0],"Lizardmen":[23,9,4,10,0],"Norse":[18,6,5,7,0],"Skaven":[18,6,5,7,0],"Dwarf":[15,5,4,6,0],"Snotling":[14,3,7,4,0],"Human":[18,5,6,7,0],"Goblin":[9,3,2,4,0],"High Elf":[47,14,13,20,0],"Chaos Renegades":[13,5,1,7,0],"Dark Elf":[24,5,10,9,0],"Nurgle":[30,6,13,11,0],"Elf Union":[17,4,6,7,0],"Amazon":[14,3,5,6,0],"Wood Elf":[14,5,1,8,0],"Khorne":[16,5,2,9,0]},"Chaos Dwarf":{"Underworld Denizens":[5,4,0,1,0],"Goblin":[10,7,2,1,0],"Halfling":[5,2,3,0,0],"Snotling":[10,6,1,3,0],"Norse":[16,7,6,3,0],"Bretonnian":[14,6,3,5,0],"Human":[16,5,7,4,0],"Orc":[34,11,12,11,0],"Tomb Kings":[21,6,9,6,0],"Vampire":[11,5,1,5,0],"Chaos Dwarf":[10,5,0,5,0],"Khorne":[16,5,6,5,0],"Old World Alliance":[17,6,4,7,0],"Wood Elf":[21,6,6,9,0],"Ogre":[7,2,2,3,0],"Amazon":[15,2,8,5,0],"High Elf":[46,9,18,19,0],"Necromantic Horror":[34,10,6,18,0],"Lizardmen":[30,9,4,17,0],"Skaven":[18,6,1,11,0],"Dwarf":[7,2,1,4,0],"Dark Elf":[28,6,8,14,0],"Nurgle":[28,6,8,14,0],"Imperial Nobility":[13,3,3,7,0],"Shambling Undead":[16,3,5,8,0],"Elf Union":[14,3,3,8,0],"Black Orc":[10,1,4,5,0],"Gnome":[5,1,1,3,0],"Chaos Chosen":[10,2,2,6,0],"Chaos Renegades":[6,1,1,4,0],"Slann":[4,4,0,0,0]},"Chaos Renegades":{"Nurgle":[21,8,10,3,1],"Shambling Undead":[12,0,6,6,1],"High Elf":[19,7,6,6,1],"Orc":[20,10,4,6,1],"Necromantic Horror":[24,9,3,12,1],"Wood Elf":[18,9,3,6,1],"Amazon":[9,3,1,5,1],"Black Orc":[10,4,4,2,1],"Bretonnian":[16,4,6,6,1],"Chaos Chosen":[13,7,1,5,1],"Chaos Dwarf":[6,4,1,1,1],"Dark Elf":[27,5,9,13,1],"Dwarf":[5,2,2,1,1],"Elf Union":[12,2,2,8,1],"Gnome":[2,1,0,1,1],"Goblin":[5,2,1,2,1],"Halfling":[5,1,2,2,1],"Human":[15,3,4,8,1],"Imperial Nobility":[3,0,1,2,1],"Khorne":[5,5,0,0,1],"Lizardmen":[19,7,4,8,1],"Norse":[12,4,3,5,1],"Ogre":[3,1,0,2,1],"Old World Alliance":[7,1,2,4,1],"Skaven":[8,2,2,4,1],"Slann":[6,3,2,1,1],"Snotling":[3,1,1,1,1],"Tomb Kings":[14,4,6,4,1],"Underworld Denizens":[5,3,1,1,1],"Vampire":[6,1,1,4,1]},"Dark Elf":{"Halfling":[6,5,1,0,0],"Gnome":[9,7,2,0,0],"Goblin":[19,14,4,1,0],"Snotling":[13,7,5,1,0],"Norse":[20,13,3,4,0],"Old World Alliance":[40,23,11,6,0],"Chaos Renegades":[27,13,9,5,0],"Chaos Dwarf":[28,14,8,6,0],"Necromantic Horror":[65,33,14,18,0],"Vampire":[18,10,2,6,0],"Amazon":[38,19,8,11,0],"Black Orc":[29,15,5,9,0],"Nurgle":[76,33,25,18,0],"Chaos Chosen":[24,9,10,5,0],"Bretonnian":[56,24,17,15,0],"Underworld Denizens":[25,11,7,7,0],"Slann":[17,7,5,5,0],"Orc":[78,32,21,25,0],"Tomb Kings":[47,16,19,12,0],"Skaven":[36,15,9,12,0],"Khorne":[17,8,2,7,0],"Wood Elf":[36,13,12,11,0],"Shambling Undead":[42,15,14,13,0],"Dwarf":[23,7,10,6,0],"Imperial Nobility":[46,16,16,14,0],"High Elf":[145,55,41,49,0],"Lizardmen":[62,21,21,20,0],"Human":[72,30,12,30,0],"Dark Elf":[66,23,20,23,0],"Elf Union":[42,11,13,18,0],"Ogre":[10,10,0,0,0]},"Dwarf":{"Goblin":[5,3,2,0,0],"Gnome":[6,4,1,1,0],"Underworld Denizens":[6,4,0,2,0],"Snotling":[6,4,0,2,0],"Chaos Dwarf":[7,4,1,2,0],"Vampire":[5,3,0,2,0],"Tomb Kings":[11,5,3,3,0],"Skaven":[8,4,1,3,0],"Chaos Chosen":[15,6,4,5,0],"Nurgle":[16,5,7,4,0],"Ogre":[2,0,2,0,0],"Halfling":[5,2,1,2,0],"Slann":[6,2,2,2,0],"Black Orc":[8,3,2,3,0],"Dark Elf":[23,6,10,7,0],"Shambling Undead":[12,4,3,5,0],"Lizardmen":[10,3,3,4,0],"Norse":[7,3,0,4,0],"Human":[21,5,7,9,0],"Chaos Renegades":[5,1,2,2,0],"Necromantic Horror":[21,5,6,10,0],"Amazon":[14,3,4,7,0],"Wood Elf":[9,2,2,5,0],"Elf Union":[18,4,4,10,0],"Orc":[20,4,5,11,0],"Khorne":[8,1,3,4,0],"High Elf":[40,5,14,21,0],"Imperial Nobility":[5,0,3,2,0],"Old World Alliance":[17,2,6,9,0],"Bretonnian":[12,3,1,8,0]},"Elf Union":{"Gnome":[3,2,1,0,0],"Black Orc":[9,6,2,1,0],"Goblin":[4,3,0,1,0],"Chaos Renegades":[12,8,2,2,0],"Lizardmen":[27,14,9,4,0],"Chaos Dwarf":[14,8,3,3,0],"Dwarf":[18,10,4,4,0],"Old World Alliance":[21,11,6,4,0],"Vampire":[6,4,0,2,0],"Human":[28,14,9,5,0],"Skaven":[21,11,5,5,0],"Halfling":[7,4,1,2,0],"High Elf":[67,33,20,14,0],"Amazon":[12,6,3,3,0],"Nurgle":[29,15,6,8,0],"Khorne":[19,9,5,5,0],"Snotling":[10,5,2,3,0],"Shambling Undead":[15,7,4,4,0],"Tomb Kings":[26,11,9,6,0],"Chaos Chosen":[17,7,6,4,0],"Dark Elf":[42,18,13,11,0],"Orc":[44,20,10,14,0],"Necromantic Horror":[40,17,10,13,0],"Norse":[7,2,3,2,0],"Elf Union":[14,2,10,2,0],"Wood Elf":[20,7,4,9,0],"Imperial Nobility":[16,4,5,7,0],"Bretonnian":[19,6,3,10,0],"Underworld Denizens":[8,3,0,5,0],"Slann":[5,5,0,0,0],"Ogre":[3,3,0,0,0]},"Gnome":{"Chaos Dwarf":[5,3,1,1,0],"Halfling":[6,3,2,1,0],"Khorne":[6,3,1,2,0],"Lizardmen":[11,4,3,4,0],"Chaos Renegades":[2,1,0,1,0],"Slann":[4,2,0,2,0],"Ogre":[5,1,3,1,0],"Gnome":[4,2,0,2,0],"Snotling":[4,1,2,1,0],"Norse":[9,3,2,4,0],"Orc":[22,7,5,10,0],"Black Orc":[7,2,2,3,0],"Bretonnian":[10,4,0,6,0],"Amazon":[10,2,4,4,0],"Imperial Nobility":[4,1,1,2,0],"Wood Elf":[8,2,2,4,0],"Shambling Undead":[3,1,0,2,0],"Chaos Chosen":[10,2,2,6,0],"Necromantic Horror":[19,3,5,11,0],"Tomb Kings":[9,2,1,6,0],"Dwarf":[6,1,1,4,0],"Old World Alliance":[12,3,0,9,0],"Goblin":[7,0,3,4,0],"Nurgle":[5,1,0,4,0],"Skaven":[8,1,1,6,0],"High Elf":[23,2,4,17,0],"Human":[12,1,2,9,0],"Elf Union":[3,0,1,2,0],"Vampire":[6,1,0,5,0],"Dark Elf":[9,0,2,7,0],"Underworld Denizens":[2,0,0,2,0]},"Goblin":{"Snotling":[11,8,2,1,0],"Gnome":[7,4,3,0,0],"Black Orc":[9,5,2,2,0],"Amazon":[7,3,3,1,0],"Halfling":[4,1,3,0,0],"Chaos Chosen":[9,4,2,3,0],"Wood Elf":[10,5,0,5,0],"Chaos Renegades":[5,2,1,2,0],"Ogre":[3,1,1,1,0],"Goblin":[10,4,2,4,0],"Necromantic Horror":[23,9,4,10,0],"Nurgle":[14,5,3,6,0],"Shambling Undead":[15,5,3,7,0],"Lizardmen":[16,4,5,7,0],"Orc":[15,4,3,8,0],"High Elf":[26,8,2,16,0],"Underworld Denizens":[3,1,0,2,0],"Norse":[12,3,2,7,0],"Imperial Nobility":[6,1,2,3,0],"Skaven":[6,2,0,4,0],"Khorne":[7,2,0,5,0],"Slann":[8,1,2,5,0],"Elf Union":[4,1,0,3,0],"Chaos Dwarf":[10,1,2,7,0],"Dwarf":[5,0,2,3,0],"Human":[9,1,1,7,0],"Bretonnian":[12,1,2,9,0],"Dark Elf":[19,1,4,14,0],"Old World Alliance":[5,0,1,4,0],"Tomb Kings":[2,0,0,2,0],"Vampire":[4,0,0,4,0]},"Halfling":{"Dark Elf":[6,0,1,5,0],"Orc":[14,8,4,2,0],"Chaos Renegades":[5,2,2,1,0],"Shambling Undead":[9,5,0,4,0],"Vampire":[2,1,0,1,0],"Snotling":[5,1,3,1,0],"Dwarf":[5,2,1,2,0],"Halfling":[4,2,0,2,0],"Amazon":[9,4,0,5,0],"Tomb Kings":[14,4,4,6,0],"Chaos Chosen":[5,1,2,2,0],"Slann":[5,1,2,2,0],"Norse":[4,1,1,2,0],"Goblin":[4,0,3,1,0],"Imperial Nobility":[4,1,1,2,0],"Skaven":[8,2,2,4,0],"Lizardmen":[11,3,2,6,0],"Elf Union":[7,2,1,4,0],"Human":[10,1,5,4,0],"Khorne":[6,2,0,4,0],"Nurgle":[12,2,4,6,0],"Gnome":[6,1,2,3,0],"Underworld Denizens":[3,0,2,1,0],"Old World Alliance":[11,2,3,6,0],"Black Orc":[8,2,1,5,0],"Chaos Dwarf":[5,0,3,2,0],"Bretonnian":[12,2,3,7,0],"Wood Elf":[7,1,2,4,0],"Necromantic Horror":[11,2,2,7,0],"High Elf":[20,4,2,14,0],"Ogre":[4,1,0,3,0]},"High Elf":{"Ogre":[22,16,5,1,0],"Gnome":[23,17,4,2,0],"Snotling":[27,16,9,2,0],"Halfling":[20,14,2,4,0],"Dwarf":[40,21,14,5,0],"Tomb Kings":[73,42,12,19,0],"Goblin":[26,16,2,8,0],"Shambling Undead":[77,41,16,20,0],"Black Orc":[41,20,12,9,0],"Imperial Nobility":[51,27,10,14,0],"Old World Alliance":[58,27,17,14,0],"Chaos Dwarf":[46,19,18,9,0],"Lizardmen":[79,39,18,22,0],"Khorne":[57,29,9,19,0],"Orc":[101,43,31,27,0],"Chaos Chosen":[47,20,13,14,0],"Wood Elf":[65,28,17,20,0],"Underworld Denizens":[20,8,6,6,0],"Vampire":[25,11,5,9,0],"Nurgle":[120,48,33,39,0],"Amazon":[60,24,16,20,0],"Skaven":[50,17,19,14,0],"Necromantic Horror":[119,48,30,41,0],"Bretonnian":[82,33,16,33,0],"High Elf":[184,79,26,79,0],"Chaos Renegades":[19,6,6,7,0],"Norse":[55,19,16,20,0],"Dark Elf":[145,49,41,55,0],"Human":[114,36,33,45,0],"Slann":[34,12,7,15,0],"Elf Union":[67,14,20,33,0]},"Human":{"Gnome":[12,9,2,1,0],"Goblin":[9,7,1,1,0],"Old World Alliance":[25,16,4,5,0],"Vampire":[16,9,5,2,0],"Snotling":[11,6,3,2,0],"Chaos Renegades":[15,8,4,3,0],"Khorne":[23,13,4,6,0],"Halfling":[10,4,5,1,0],"Amazon":[24,12,7,5,0],"Imperial Nobility":[24,11,9,4,0],"Bretonnian":[35,19,7,9,0],"Slann":[14,8,2,4,0],"Norse":[14,7,4,3,0],"Skaven":[26,14,5,7,0],"Black Orc":[20,11,3,6,0],"Underworld Denizens":[17,8,5,4,0],"Dwarf":[21,9,7,5,0],"Chaos Chosen":[18,7,6,5,0],"Tomb Kings":[29,13,6,10,0],"High Elf":[114,45,33,36,0],"Wood Elf":[23,10,4,9,0],"Human":[42,16,10,16,0],"Ogre":[11,3,5,3,0],"Dark Elf":[72,30,12,30,0],"Orc":[45,16,11,18,0],"Chaos Dwarf":[16,4,7,5,0],"Necromantic Horror":[58,21,12,25,0],"Nurgle":[45,14,13,18,0],"Lizardmen":[54,19,10,25,0],"Shambling Undead":[39,10,10,19,0],"Elf Union":[28,5,9,14,0]},"Imperial Nobility":{"Chaos Renegades":[3,2,1,0,0],"Tomb Kings":[16,11,2,3,0],"Snotling":[8,6,0,2,0],"Old World Alliance":[16,11,2,3,0],"Dwarf":[5,2,3,0,0],"Shambling Undead":[13,8,2,3,0],"Slann":[9,6,0,3,0],"Goblin":[6,3,2,1,0],"Chaos Dwarf":[13,7,3,3,0],"Vampire":[7,3,3,1,0],"Orc":[27,14,6,7,0],"Halfling":[4,2,1,1,0],"Gnome":[4,2,1,1,0],"Black Orc":[9,5,1,3,0],"Norse":[14,8,1,5,0],"Elf Union":[16,7,5,4,0],"Underworld Denizens":[6,3,1,2,0],"Skaven":[16,6,6,4,0],"Wood Elf":[10,4,2,4,0],"Khorne":[8,3,2,3,0],"Imperial Nobility":[6,2,2,2,0],"Nurgle":[21,7,7,7,0],"Dark Elf":[46,14,16,16,0],"Necromantic Horror":[30,9,7,14,0],"Chaos Chosen":[11,3,3,5,0],"Bretonnian":[14,3,5,6,0],"Lizardmen":[22,6,5,11,0],"High Elf":[51,14,10,27,0],"Amazon":[11,2,4,5,0],"Human":[24,4,9,11,0],"Ogre":[1,1,0,0,0]},"Khorne":{"Goblin":[7,5,0,2,0],"Black Orc":[18,10,5,3,0],"Dwarf":[8,4,3,1,0],"Halfling":[6,4,0,2,0],"Chaos Chosen":[16,9,2,5,0],"Lizardmen":[17,8,5,4,0],"Norse":[15,6,6,3,0],"Amazon":[12,6,2,4,0],"Tomb Kings":[12,5,4,3,0],"Snotling":[9,4,2,3,0],"Vampire":[10,5,1,4,0],"Orc":[36,16,7,13,0],"Shambling Undead":[18,5,9,4,0],"Bretonnian":[18,7,5,6,0],"Nurgle":[23,9,6,8,0],"Chaos Dwarf":[16,5,6,5,0],"Necromantic Horror":[33,12,9,12,0],"Khorne":[10,4,2,4,0],"Skaven":[7,3,1,3,0],"Imperial Nobility":[8,3,2,3,0],"Slann":[9,4,1,4,0],"Underworld Denizens":[7,3,1,3,0],"Dark Elf":[17,7,2,8,0],"Old World Alliance":[15,5,4,6,0],"Gnome":[6,2,1,3,0],"High Elf":[57,19,9,29,0],"Elf Union":[19,5,5,9,0],"Wood Elf":[12,3,3,6,0],"Human":[23,6,4,13,0],"Ogre":[9,1,3,5,0],"Chaos Renegades":[5,0,0,5,0]},"Lizardmen":{"Norse":[14,9,2,3,0],"Halfling":[11,6,2,3,0],"Chaos Dwarf":[30,17,4,9,0],"Vampire":[15,8,3,4,0],"Imperial Nobility":[22,11,5,6,0],"Goblin":[16,7,5,4,0],"Shambling Undead":[25,12,5,8,0],"Black Orc":[26,11,7,8,0],"Human":[54,25,10,19,0],"Nurgle":[49,19,16,14,0],"Dwarf":[10,4,3,3,0],"Necromantic Horror":[54,25,9,20,0],"Chaos Renegades":[19,8,4,7,0],"Chaos Chosen":[23,10,4,9,0],"Orc":[56,21,15,20,0],"Old World Alliance":[32,13,6,13,0],"Lizardmen":[24,8,8,8,0],"Gnome":[11,4,3,4,0],"Dark Elf":[62,20,21,21,0],"Wood Elf":[28,11,4,13,0],"Tomb Kings":[30,12,3,15,0],"Snotling":[7,2,2,3,0],"Ogre":[14,5,2,7,0],"Skaven":[26,7,7,12,0],"Amazon":[30,8,8,14,0],"High Elf":[79,22,18,39,0],"Khorne":[17,4,5,8,0],"Bretonnian":[39,10,9,20,0],"Elf Union":[27,4,9,14,0],"Underworld Denizens":[12,2,2,8,0],"Slann":[12,2,2,8,0]},"Necromantic Horror":{"Ogre":[11,7,3,1,0],"Vampire":[21,11,9,1,0],"Halfling":[11,7,2,2,0],"Gnome":[19,11,5,3,0],"Norse":[24,15,2,7,0],"Underworld Denizens":[23,12,5,6,0],"Dwarf":[21,10,6,5,0],"Chaos Dwarf":[34,18,6,10,0],"Orc":[66,30,19,17,0],"Chaos Renegades":[24,12,3,9,0],"Shambling Undead":[42,17,15,10,0],"Imperial Nobility":[30,14,7,9,0],"Wood Elf":[21,9,6,6,0],"Tomb Kings":[37,16,10,11,0],"Old World Alliance":[32,15,6,11,0],"Black Orc":[29,12,8,9,0],"Amazon":[27,9,11,7,0],"Human":[58,25,12,21,0],"Goblin":[23,10,4,9,0],"Nurgle":[76,29,19,28,0],"Necromantic Horror":[76,23,30,23,0],"Khorne":[33,12,9,12,0],"Snotling":[19,7,4,8,0],"Slann":[18,6,5,7,0],"High Elf":[119,41,30,48,0],"Chaos Chosen":[47,16,12,19,0],"Skaven":[33,13,4,16,0],"Lizardmen":[54,20,9,25,0],"Elf Union":[40,13,10,17,0],"Bretonnian":[32,9,9,14,0],"Dark Elf":[65,18,14,33,0]},"Norse":{"Snotling":[11,6,3,2,0],"Goblin":[12,7,2,3,0],"Halfling":[4,2,1,1,0],"Slann":[5,3,0,2,0],"Dwarf":[7,4,0,3,0],"Gnome":[9,4,2,3,0],"Chaos Renegades":[12,5,3,4,0],"Chaos Chosen":[18,7,5,6,0],"High Elf":[55,20,16,19,0],"Underworld Denizens":[1,0,1,0,0],"Ogre":[2,1,0,1,0],"Norse":[12,6,0,6,0],"Shambling Undead":[12,5,2,5,0],"Elf Union":[7,2,3,2,0],"Wood Elf":[10,4,2,4,0],"Bretonnian":[16,6,3,7,0],"Skaven":[12,5,1,6,0],"Tomb Kings":[24,7,7,10,0],"Khorne":[15,3,6,6,0],"Old World Alliance":[15,5,2,8,0],"Imperial Nobility":[14,5,1,8,0],"Orc":[30,10,3,17,0],"Chaos Dwarf":[16,3,6,7,0],"Vampire":[11,3,2,6,0],"Human":[14,3,4,7,0],"Amazon":[14,2,6,6,0],"Nurgle":[34,8,7,19,0],"Necromantic Horror":[24,7,2,15,0],"Lizardmen":[14,3,2,9,0],"Dark Elf":[20,4,3,13,0],"Black Orc":[7,1,0,6,0]},"Nurgle":{"Gnome":[5,4,0,1,0],"Black Orc":[23,15,5,3,0],"Halfling":[12,6,4,2,0],"Norse":[34,19,7,8,0],"Chaos Dwarf":[28,14,8,6,0],"Ogre":[14,7,3,4,0],"Vampire":[10,5,2,3,0],"Old World Alliance":[34,16,8,10,0],"Chaos Chosen":[30,11,13,6,0],"Slann":[12,6,2,4,0],"Orc":[57,27,11,19,0],"Underworld Denizens":[19,8,5,6,0],"Human":[45,18,13,14,0],"Goblin":[14,6,3,5,0],"Snotling":[17,8,2,7,0],"Shambling Undead":[39,12,17,10,0],"Tomb Kings":[40,13,16,11,0],"Amazon":[23,9,6,8,0],"Imperial Nobility":[21,7,7,7,0],"Skaven":[23,8,7,8,0],"Nurgle":[60,21,18,21,0],"Chaos Renegades":[21,3,10,8,0],"Necromantic Horror":[76,28,19,29,0],"Khorne":[23,8,6,9,0],"Dwarf":[16,4,7,5,0],"High Elf":[120,39,33,48,0],"Lizardmen":[49,14,16,19,0],"Wood Elf":[32,11,6,15,0],"Bretonnian":[46,13,14,19,0],"Dark Elf":[76,18,25,33,0],"Elf Union":[29,8,6,15,0]},"Ogre":{"Wood Elf":[6,0,1,5,0],"Halfling":[4,3,0,1,0],"Khorne":[9,5,3,1,0],"Chaos Renegades":[3,2,0,1,0],"Black Orc":[7,4,1,2,0],"Shambling Undead":[11,5,3,3,0],"Lizardmen":[14,7,2,5,0],"Chaos Dwarf":[7,3,2,2,0],"Tomb Kings":[15,5,6,4,0],"Human":[11,3,5,3,0],"Gnome":[5,1,3,1,0],"Goblin":[3,1,1,1,0],"Ogre":[6,2,2,2,0],"Norse":[2,1,0,1,0],"Dwarf":[2,0,2,0,0],"Skaven":[10,0,1,9,0],"Orc":[11,3,4,4,0],"Old World Alliance":[8,3,1,4,0],"Nurgle":[14,4,3,7,0],"Chaos Chosen":[11,2,4,5,0],"Slann":[3,1,0,2,0],"Bretonnian":[19,2,5,12,0],"Necromantic Horror":[11,1,3,7,0],"Amazon":[7,1,1,5,0],"High Elf":[22,1,5,16,0],"Snotling":[1,1,0,0,0],"Vampire":[4,0,0,4,0],"Underworld Denizens":[2,0,0,2,0],"Dark Elf":[10,0,0,10,0],"Elf Union":[3,0,0,3,0],"Imperial Nobility":[1,0,0,1,0]},"Old World Alliance":{"Goblin":[5,4,1,0,0],"Snotling":[9,6,2,1,0],"Gnome":[12,9,0,3,0],"Chaos Renegades":[7,4,2,1,0],"Dwarf":[17,9,6,2,0],"Halfling":[11,6,3,2,0],"Vampire":[12,7,2,3,0],"Underworld Denizens":[9,6,0,3,0],"Wood Elf":[17,8,5,4,0],"Black Orc":[14,7,3,4,0],"Norse":[15,8,2,5,0],"Ogre":[8,4,1,3,0],"Slann":[18,8,4,6,0],"Orc":[43,17,13,13,0],"Khorne":[15,6,4,5,0],"Chaos Dwarf":[17,7,4,6,0],"Bretonnian":[34,15,6,13,0],"Amazon":[25,10,6,9,0],"Shambling Undead":[27,10,8,9,0],"Tomb Kings":[28,12,5,11,0],"Old World Alliance":[30,13,4,13,0],"Lizardmen":[32,13,6,13,0],"Skaven":[16,7,2,7,0],"Necromantic Horror":[32,11,6,15,0],"Chaos Chosen":[17,7,0,10,0],"Nurgle":[34,10,8,16,0],"High Elf":[58,14,17,27,0],"Elf Union":[21,4,6,11,0],"Dark Elf":[40,6,11,23,0],"Human":[25,5,4,16,0],"Imperial Nobility":[16,3,2,11,0]},"Orc":{"Snotling":[21,13,5,3,0],"Black Orc":[28,17,6,5,0],"Dwarf":[20,11,5,4,0],"Vampire":[15,8,4,3,0],"Goblin":[15,8,3,4,0],"Norse":[30,17,3,10,0],"Shambling Undead":[44,21,11,12,0],"Gnome":[22,10,5,7,0],"Skaven":[38,17,9,12,0],"Bretonnian":[49,22,10,17,0],"Ogre":[11,4,4,3,0],"Underworld Denizens":[16,7,3,6,0],"Human":[45,18,11,16,0],"Amazon":[33,12,9,12,0],"Wood Elf":[36,14,8,14,0],"Orc":[52,15,22,15,0],"Chaos Dwarf":[34,11,12,11,0],"Lizardmen":[56,20,15,21,0],"Tomb Kings":[40,14,11,15,0],"Khorne":[36,13,7,16,0],"Dark Elf":[78,25,21,32,0],"Old World Alliance":[43,13,13,17,0],"Elf Union":[44,14,10,20,0],"Nurgle":[57,19,11,27,0],"High Elf":[101,27,31,43,0],"Chaos Renegades":[20,6,4,10,0],"Chaos Chosen":[36,8,14,14,0],"Slann":[28,8,7,13,0],"Necromantic Horror":[66,17,19,30,0],"Imperial Nobility":[27,7,6,14,0],"Halfling":[14,2,4,8,0]},"Shambling Undead":{"Chaos Renegades":[12,6,6,0,0],"Snotling":[15,9,3,3,0],"Gnome":[3,2,0,1,0],"Chaos Dwarf":[16,8,5,3,0],"Black Orc":[11,6,2,3,0],"Human":[39,19,10,10,0],"Amazon":[18,9,3,6,0],"Slann":[15,6,5,4,0],"Goblin":[15,7,3,5,0],"Dwarf":[12,5,3,4,0],"Skaven":[25,10,7,8,0],"Norse":[12,5,2,5,0],"Shambling Undead":[30,7,16,7,0],"Old World Alliance":[27,9,8,10,0],"Bretonnian":[24,7,9,8,0],"Dark Elf":[42,13,14,15,0],"Wood Elf":[19,7,4,8,0],"Nurgle":[39,10,17,12,0],"Khorne":[18,4,9,5,0],"Tomb Kings":[22,5,10,7,0],"Halfling":[9,4,0,5,0],"Chaos Chosen":[23,5,10,8,0],"Lizardmen":[25,8,5,12,0],"Necromantic Horror":[42,10,15,17,0],"Ogre":[11,3,3,5,0],"Elf Union":[15,4,4,7,0],"Orc":[44,12,11,21,0],"High Elf":[77,20,16,41,0],"Imperial Nobility":[13,3,2,8,0],"Vampire":[13,3,2,8,0],"Underworld Denizens":[5,1,1,3,0]},"Skaven":{"Ogre":[10,9,1,0,0],"Gnome":[8,6,1,1,0],"Amazon":[13,9,3,1,0],"Snotling":[6,3,3,0,0],"Goblin":[6,4,0,2,0],"Chaos Dwarf":[18,11,1,6,0],"Halfling":[8,4,2,2,0],"Chaos Renegades":[8,4,2,2,0],"Lizardmen":[26,12,7,7,0],"Slann":[7,3,2,2,0],"Wood Elf":[18,8,4,6,0],"Necromantic Horror":[33,16,4,13,0],"Norse":[12,6,1,5,0],"Bretonnian":[16,7,3,6,0],"Chaos Chosen":[18,7,5,6,0],"Tomb Kings":[20,6,9,5,0],"Old World Alliance":[16,7,2,7,0],"Black Orc":[11,4,3,4,0],"Nurgle":[23,8,7,8,0],"Skaven":[18,8,2,8,0],"Khorne":[7,3,1,3,0],"Underworld Denizens":[7,2,3,2,0],"High Elf":[50,14,19,17,0],"Shambling Undead":[25,8,7,10,0],"Dark Elf":[36,12,9,15,0],"Vampire":[9,4,0,5,0],"Dwarf":[8,3,1,4,0],"Imperial Nobility":[16,4,6,6,0],"Orc":[38,12,9,17,0],"Human":[26,7,5,14,0],"Elf Union":[21,5,5,11,0]},"Slann":{"Lizardmen":[12,8,2,2,0],"Goblin":[8,5,2,1,0],"Black Orc":[11,5,5,1,0],"Ogre":[3,2,0,1,0],"Halfling":[5,2,2,1,0],"Amazon":[11,5,3,3,0],"Orc":[28,13,7,8,0],"Wood Elf":[10,4,3,3,0],"High Elf":[34,15,7,12,0],"Necromantic Horror":[18,7,5,6,0],"Underworld Denizens":[6,3,0,3,0],"Dwarf":[6,2,2,2,0],"Bretonnian":[14,6,2,6,0],"Gnome":[4,2,0,2,0],"Slann":[6,3,0,3,0],"Khorne":[9,4,1,4,0],"Old World Alliance":[18,6,4,8,0],"Dark Elf":[17,5,5,7,0],"Shambling Undead":[15,4,5,6,0],"Skaven":[7,2,2,3,0],"Nurgle":[12,4,2,6,0],"Tomb Kings":[6,2,1,3,0],"Chaos Chosen":[6,2,1,3,0],"Norse":[5,2,0,3,0],"Human":[14,4,2,8,0],"Imperial Nobility":[9,3,0,6,0],"Chaos Renegades":[6,1,2,3,0],"Snotling":[2,2,0,0,0],"Elf Union":[5,0,0,5,0],"Chaos Dwarf":[4,0,0,4,0],"Vampire":[3,0,0,3,0]},"Snotling":{"Wood Elf":[4,3,0,1,0],"Lizardmen":[7,3,2,2,0],"Tomb Kings":[12,4,5,3,0],"Chaos Chosen":[14,4,7,3,0],"Necromantic Horror":[19,8,4,7,0],"Chaos Renegades":[3,1,1,1,0],"Snotling":[4,2,0,2,0],"Halfling":[5,1,3,1,0],"Gnome":[4,1,2,1,0],"Nurgle":[17,7,2,8,0],"Bretonnian":[12,4,3,5,0],"Khorne":[9,3,2,4,0],"Underworld Denizens":[6,1,3,2,0],"Elf Union":[10,3,2,5,0],"Chaos Dwarf":[10,3,1,6,0],"Dwarf":[6,2,0,4,0],"Human":[11,2,3,6,0],"Norse":[11,2,3,6,0],"Black Orc":[8,2,1,5,0],"Shambling Undead":[15,3,3,9,0],"Amazon":[10,3,0,7,0],"Dark Elf":[13,1,5,7,0],"Orc":[21,3,5,13,0],"Skaven":[6,0,3,3,0],"Imperial Nobility":[8,2,0,6,0],"High Elf":[27,2,9,16,0],"Old World Alliance":[9,1,2,6,0],"Vampire":[5,0,2,3,0],"Goblin":[11,1,2,8,0],"Slann":[2,0,0,2,0],"Ogre":[1,0,0,1,0]},"Tomb Kings":{"Gnome":[9,6,1,2,0],"Black Orc":[25,14,3,8,0],"Slann":[6,3,1,2,0],"Halfling":[14,6,4,4,0],"Norse":[24,10,7,7,0],"Lizardmen":[30,15,3,12,0],"Shambling Undead":[22,7,10,5,0],"Orc":[40,15,11,14,0],"Tomb Kings":[40,12,16,12,0],"Chaos Renegades":[14,4,6,4,0],"Chaos Dwarf":[21,6,9,6,0],"Underworld Denizens":[6,2,2,2,0],"Old World Alliance":[28,11,5,12,0],"Chaos Chosen":[23,8,6,9,0],"Skaven":[20,5,9,6,0],"Nurgle":[40,11,16,13,0],"Ogre":[15,4,6,5,0],"Snotling":[12,3,5,4,0],"Dark Elf":[47,12,19,16,0],"Human":[29,10,6,13,0],"Amazon":[26,7,9,10,0],"Necromantic Horror":[37,11,10,16,0],"Khorne":[12,3,4,5,0],"Dwarf":[11,3,3,5,0],"Elf Union":[26,6,9,11,0],"Wood Elf":[15,5,2,8,0],"High Elf":[73,19,12,42,0],"Bretonnian":[24,5,6,13,0],"Vampire":[12,2,3,7,0],"Imperial Nobility":[16,3,2,11,0],"Goblin":[2,2,0,0,0]},"Underworld Denizens":{"Lizardmen":[12,8,2,2,0],"Shambling Undead":[5,3,1,1,0],"Vampire":[3,2,0,1,0],"Goblin":[3,2,0,1,0],"Black Orc":[9,5,2,2,0],"Halfling":[3,1,2,0,0],"Elf Union":[8,5,0,3,0],"Snotling":[6,2,3,1,0],"Skaven":[7,2,3,2,0],"Tomb Kings":[6,2,2,2,0],"Khorne":[7,3,1,3,0],"Norse":[1,0,1,0,0],"Underworld Denizens":[8,1,6,1,0],"Chaos Chosen":[6,3,0,3,0],"Slann":[6,3,0,3,0],"Orc":[16,6,3,7,0],"Bretonnian":[12,5,1,6,0],"High Elf":[20,6,6,8,0],"Nurgle":[19,6,5,8,0],"Dark Elf":[25,7,7,11,0],"Imperial Nobility":[6,2,1,3,0],"Human":[17,4,5,8,0],"Necromantic Horror":[23,6,5,12,0],"Amazon":[15,3,5,7,0],"Dwarf":[6,2,0,4,0],"Old World Alliance":[9,3,0,6,0],"Chaos Renegades":[5,1,1,3,0],"Wood Elf":[7,2,0,5,0],"Chaos Dwarf":[5,1,0,4,0],"Gnome":[2,2,0,0,0],"Ogre":[2,2,0,0,0]},"Vampire":{"Gnome":[6,5,0,1,0],"Snotling":[5,3,2,0,0],"Chaos Renegades":[6,4,1,1,0],"Tomb Kings":[12,7,3,2,0],"Shambling Undead":[13,8,2,3,0],"Norse":[11,6,2,3,0],"Black Orc":[8,4,1,3,0],"Skaven":[9,5,0,4,0],"Vampire":[6,3,0,3,0],"Halfling":[2,1,0,1,0],"Bretonnian":[14,6,2,6,0],"Amazon":[14,5,4,5,0],"Chaos Dwarf":[11,5,1,5,0],"High Elf":[25,9,5,11,0],"Khorne":[10,4,1,5,0],"Chaos Chosen":[11,3,3,5,0],"Nurgle":[10,3,2,5,0],"Dwarf":[5,2,0,3,0],"Dark Elf":[18,6,2,10,0],"Lizardmen":[15,4,3,8,0],"Imperial Nobility":[7,1,3,3,0],"Elf Union":[6,2,0,4,0],"Underworld Denizens":[3,1,0,2,0],"Old World Alliance":[12,3,2,7,0],"Orc":[15,3,4,8,0],"Human":[16,2,5,9,0],"Necromantic Horror":[21,1,9,11,0],"Wood Elf":[9,2,0,7,0],"Goblin":[4,4,0,0,0],"Slann":[3,3,0,0,0],"Ogre":[4,4,0,0,0]},"Wood Elf":{"Ogre":[6,5,1,0,0],"Vampire":[9,7,0,2,0],"Halfling":[7,4,2,1,0],"Underworld Denizens":[7,5,0,2,0],"Dwarf":[9,5,2,2,0],"Gnome":[8,4,2,2,0],"Black Orc":[16,8,4,4,0],"Khorne":[12,6,3,3,0],"Chaos Chosen":[14,8,1,5,0],"Tomb Kings":[15,8,2,5,0],"Chaos Dwarf":[21,9,6,6,0],"Nurgle":[32,15,6,11,0],"Elf Union":[20,9,4,7,0],"Lizardmen":[28,13,4,11,0],"Amazon":[19,6,8,5,0],"Shambling Undead":[19,8,4,7,0],"Bretonnian":[27,10,8,9,0],"Wood Elf":[16,4,8,4,0],"Imperial Nobility":[10,4,2,4,0],"Norse":[10,4,2,4,0],"Orc":[36,14,8,14,0],"Goblin":[10,5,0,5,0],"Human":[23,9,4,10,0],"Dark Elf":[36,11,12,13,0],"Slann":[10,3,3,4,0],"Skaven":[18,6,4,8,0],"High Elf":[65,20,17,28,0],"Necromantic Horror":[21,6,6,9,0],"Chaos Renegades":[18,6,3,9,0],"Old World Alliance":[17,4,5,8,0],"Snotling":[4,1,0,3,0]}};
+    const ROSTERS = ["Amazon","Black Orc","Bretonnian","Chaos Chosen","Chaos Dwarf","Chaos Renegades","Dark Elf","Dwarf","Elf Union","Gnome","Goblin","Halfling","High Elf","Human","Imperial Nobility","Khorne","Lizardmen","Necromantic Horror","Norse","Nurgle","Ogre","Old World Alliance","Orc","Shambling Undead","Skaven","Slann","Snotling","Tomb Kings","Underworld Denizens","Vampire","Wood Elf"];
+    const STORAGE_KEY = "eightfold-matchup-v1";
+    const DEFAULT_HOME = ["Amazons", "Bretonian", "Dark Elf", "Dwarf", "High Elf", "Human", "Lizardmen", "Wood Elf"].map(canonicalRoster);
+    const DEFAULT_AWAY = ["Orc", "Shambling Undead", "Skaven", "Norse", "Chaos Dwarf", "Necromantic Horror", "Khorne", "Vampire"];
+    const openDetails = new Set();
+
+    function canonicalRoster(name) {
+      return ({ Amazons: "Amazon", Bretonian: "Bretonnian", "Underwold Denizens": "Underworld Denizens", "Chaos Renegade": "Chaos Renegades" })[name] || name;
+    }
+
+    function freshState() {
+      return {
+        homeName: "Slovenia",
+        awayName: "Opponent",
+        home: DEFAULT_HOME.map((roster) => ({ coach: "", roster })),
+        away: DEFAULT_AWAY.map((roster) => ({ coach: "", roster }))
+      };
+    }
+
+    function loadState() {
+      try {
+        const stored = JSON.parse(localStorage.getItem(STORAGE_KEY));
+        if (!stored || !Array.isArray(stored.home) || !Array.isArray(stored.away) || stored.home.length !== 8 || stored.away.length !== 8) return freshState();
+        const valid = (entry) => ({ coach: String(entry.coach || "").slice(0, 40), roster: ROSTERS.includes(entry.roster) ? entry.roster : ROSTERS[0] });
+        return { homeName: String(stored.homeName || "Slovenia").slice(0, 32), awayName: String(stored.awayName || "Opponent").slice(0, 32), home: stored.home.map(valid), away: stored.away.map(valid) };
+      } catch { return freshState(); }
+    }
+
+    let state = loadState();
+    const $ = (selector) => document.querySelector(selector);
+    const pct = (value, digits = 1) => (value * 100).toFixed(digits) + "%";
+    const escapeHtml = (value) => String(value).replace(/[&<>'"]/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" })[char]);
+    const options = (selected) => ROSTERS.map((roster) => `<option value="${escapeHtml(roster)}"${roster === selected ? " selected" : ""}>${escapeHtml(roster)}</option>`).join("");
+
+    function matchup(home, away) {
+      let raw = DATA[home] && DATA[home][away];
+      let source = raw && raw[4] ? "derived from reciprocal record" : "direct";
+      if (!raw) {
+        const reciprocal = DATA[away] && DATA[away][home];
+        if (reciprocal) {
+          raw = [reciprocal[0], reciprocal[3], reciprocal[2], reciprocal[1]];
+          source = "derived from reciprocal record";
+        }
+      }
+      if (!raw) return { g: 0, w: 0, d: 0, l: 0, rate: .5, noLoss: 1, verdict: "draw", source: "no data", strength: "none" };
+      const [g, w, d, l] = raw;
+      const rate = (w + d * .5) / g;
+      return { g, w, d, l, rate, noLoss: (w + d) / g, verdict: rate > .55 ? "win" : rate < .45 ? "loss" : "draw", source, strength: g >= 30 ? "high" : g >= 10 ? "medium" : "low" };
+    }
+
+    function nationProbability(rows) {
+      let distribution = new Map([[0, 1]]);
+      for (const row of rows) {
+        const probabilities = row.g ? [[1, row.w / row.g], [0, row.d / row.g], [-1, row.l / row.g]] : [[0, 1]];
+        const next = new Map();
+        for (const [score, chance] of distribution) {
+          for (const [delta, probability] of probabilities) next.set(score + delta, (next.get(score + delta) || 0) + chance * probability);
+        }
+        distribution = next;
+      }
+      let win = 0, draw = 0, loss = 0;
+      for (const [score, chance] of distribution) score > 0 ? win += chance : score < 0 ? loss += chance : draw += chance;
+      return { win, draw, loss };
+    }
+
+    function renderMatchups(rows) {
+      $("#matchups").innerHTML = rows.map((row, index) => {
+        const statusColor = `var(--${row.verdict})`;
+        const expanded = openDetails.has(index);
+        const sourceNote = row.source === "direct" ? "Direct record from the selected Nation A roster file." : row.source === "no data" ? "No supplied record in either direction. Treated as a neutral draw." : "Nation A record reconstructed by reversing Nation B's supplied results.";
+        return `<div class="matchup-row" style="--status-color:${statusColor}" data-row="${index}">
+          <span class="slot">${String(index + 1).padStart(2, "0")}</span>
+          <div class="team-entry">
+            <input class="field coach" data-side="home" data-index="${index}" value="${escapeHtml(state.home[index].coach)}" placeholder="Coach" aria-label="Nation A coach ${index + 1}">
+            <select class="field roster" data-side="home" data-index="${index}" aria-label="Nation A roster ${index + 1}">${options(state.home[index].roster)}</select>
+          </div>
+          <div class="rate"><strong>${row.g ? pct(row.rate) : "N/A"}</strong><small>Nation A</small></div>
+          <div class="team-entry away-entry">
+            <input class="field coach" data-side="away" data-index="${index}" value="${escapeHtml(state.away[index].coach)}" placeholder="Coach" aria-label="Nation B coach ${index + 1}">
+            <select class="field roster" data-side="away" data-index="${index}" aria-label="Nation B roster ${index + 1}">${options(state.away[index].roster)}</select>
+          </div>
+          <div class="stat"><strong>${row.g ? `${row.w}–${row.d}–${row.l}` : "No record"}</strong><small>W–D–L</small></div>
+          <div class="stat"><strong>${row.g || "—"}</strong><small>played</small></div>
+          <div class="stat"><strong>${row.g ? pct(row.noLoss) : "—"}</strong><small>W + D</small></div>
+          <div class="stat"><strong>${row.strength}</strong><small>strength</small></div>
+          <div class="outcome">${row.verdict === "draw" ? "draw" : "guaranteed " + row.verdict}</div>
+          <button class="detail-button" type="button" data-detail="${index}" aria-expanded="${expanded}" aria-label="Toggle details for pairing ${index + 1}">${expanded ? "−" : "+"}</button>
+          <div class="matchup-detail${expanded ? " open" : ""}">
+            <div class="detail-cell note"><small>Data source</small><strong>${sourceNote}</strong></div>
+            <div class="detail-cell"><small>Actual win chance</small><strong>${row.g ? pct(row.w / row.g) : "—"}</strong></div>
+            <div class="detail-cell"><small>Actual draw chance</small><strong>${row.g ? pct(row.d / row.g) : "—"}</strong></div>
+            <div class="detail-cell"><small>Actual loss chance</small><strong>${row.g ? pct(row.l / row.g) : "—"}</strong></div>
+            <div class="detail-cell"><small>Edge from even</small><strong>${row.g ? (row.rate >= .5 ? "+" : "") + ((row.rate - .5) * 100).toFixed(1) + " pp" : "—"}</strong></div>
+          </div>
+        </div>`;
+      }).join("");
+    }
+
+    function renderSummary(rows) {
+      const counts = { win: 0, draw: 0, loss: 0 };
+      rows.forEach((row) => counts[row.verdict]++);
+      const result = counts.win > counts.loss ? "win" : counts.win < counts.loss ? "loss" : "draw";
+      const probability = nationProbability(rows);
+      $("#homeRecord").innerHTML = `<span><b>${counts.win}</b> W</span><span><b>${counts.draw}</b> D</span><span><b>${counts.loss}</b> L</span>`;
+      $("#awayRecord").innerHTML = `<span><b>${counts.loss}</b> W</span><span><b>${counts.draw}</b> D</span><span><b>${counts.win}</b> L</span>`;
+      $("#verdict").className = `verdict c-${result}`;
+      $("#verdict").innerHTML = `<strong>${counts.win}:${counts.loss}</strong><span>Projected ${result}</span>`;
+      const probabilities = [
+        [state.homeName + " nation win", probability.win, "win"],
+        ["Nation draw", probability.draw, "draw"],
+        [state.awayName + " nation win", probability.loss, "loss"]
+      ];
+      $("#probabilities").innerHTML = probabilities.map(([label, value, type]) => `<div class="probability c-${type}"><small>${escapeHtml(label)}</small><strong>${pct(value)}</strong><div class="prob-track"><i style="width:${value * 100}%"></i></div></div>`).join("");
+    }
+
+    function renderInsights(rows) {
+      const ranked = rows.map((row, index) => ({ ...row, index, edge: Math.abs(row.rate - .5) })).sort((a, b) => b.edge - a.edge);
+      $("#swingList").innerHTML = ranked.map((row, rank) => {
+        const home = state.home[row.index], away = state.away[row.index];
+        const labels = `${home.coach || home.roster} vs ${away.coach || away.roster}`;
+        const sub = `${home.roster} / ${away.roster} · ${row.g ? row.g + " games" : "no data"}`;
+        return `<div class="swing-item" style="--status-color:var(--${row.verdict})"><span class="num">${String(rank + 1).padStart(2, "0")}</span><span><strong>${escapeHtml(labels)}</strong><small>${escapeHtml(sub)}</small></span><span class="swing-value">${row.g ? (row.rate >= .5 ? "+" : "") + ((row.rate - .5) * 100).toFixed(1) + " pp" : "N/A"}</span></div>`;
+      }).join("");
+      const direct = rows.filter((row) => row.source === "direct").length;
+      const derived = rows.filter((row) => row.source.startsWith("derived")).length;
+      const missing = rows.filter((row) => row.source === "no data").length;
+      $("#dataNote").textContent = `Current slate: ${direct} direct · ${derived} reciprocal-derived · ${missing} no-data. Dataset: 31 roster CSV exports embedded in this file.`;
+    }
+
+    function render() {
+      $("#homeName").value = state.homeName;
+      $("#awayName").value = state.awayName;
+      $("#homeNameDisplay").textContent = state.homeName;
+      $("#awayNameDisplay").textContent = state.awayName;
+      const rows = state.home.map((entry, index) => matchup(entry.roster, state.away[index].roster));
+      renderSummary(rows);
+      renderMatchups(rows);
+      renderInsights(rows);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    }
+
+    function editNation(side) {
+      const input = $(`#${side}Name`), display = $(`#${side}NameDisplay`);
+      display.hidden = true;
+      input.classList.remove("sr-only");
+      input.classList.add("field");
+      input.focus();
+      input.select();
+    }
+
+    function finishNationEdit(side) {
+      const input = $(`#${side}Name`), display = $(`#${side}NameDisplay`);
+      state[side + "Name"] = input.value.trim() || (side === "home" ? "Nation A" : "Nation B");
+      input.classList.add("sr-only");
+      input.classList.remove("field");
+      display.hidden = false;
+      render();
+    }
+
+    $("#matchups").addEventListener("input", (event) => {
+      const target = event.target;
+      if (!target.matches(".coach")) return;
+      state[target.dataset.side][Number(target.dataset.index)].coach = target.value;
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      const rows = state.home.map((entry, index) => matchup(entry.roster, state.away[index].roster));
+      renderInsights(rows);
+    });
+    $("#matchups").addEventListener("change", (event) => {
+      const target = event.target;
+      if (!target.matches(".roster")) return;
+      state[target.dataset.side][Number(target.dataset.index)].roster = target.value;
+      render();
+    });
+    $("#matchups").addEventListener("click", (event) => {
+      const button = event.target.closest("[data-detail]");
+      if (!button) return;
+      const index = Number(button.dataset.detail);
+      openDetails.has(index) ? openDetails.delete(index) : openDetails.add(index);
+      render();
+    });
+    ["home", "away"].forEach((side) => {
+      const display = $(`#${side}NameDisplay`), input = $(`#${side}Name`);
+      display.addEventListener("click", () => editNation(side));
+      display.addEventListener("keydown", (event) => { if (event.key === "Enter" || event.key === " ") editNation(side); });
+      input.addEventListener("blur", () => finishNationEdit(side));
+      input.addEventListener("keydown", (event) => { if (event.key === "Enter") input.blur(); });
+    });
+    $("#swapButton").addEventListener("click", () => {
+      [state.home, state.away] = [state.away, state.home];
+      [state.homeName, state.awayName] = [state.awayName, state.homeName];
+      openDetails.clear();
+      render();
+    });
+    $("#resetButton").addEventListener("click", () => {
+      if (!confirm("Reset both nations, coaches and rosters?")) return;
+      state = freshState();
+      openDetails.clear();
+      render();
+    });
+    $("#printButton").addEventListener("click", () => window.print());
+    render();
+  </script>
+</body>
+</html>
