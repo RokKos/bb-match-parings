@@ -21,7 +21,9 @@
       --accent: #d9f34a;
       --accent-ink: #161a0d;
       --win: #8fcd76;
+      --edge-win: #b0cf71;
       --draw: #c3bba2;
+      --edge-loss: #d5a06f;
       --loss: #e37b68;
       --radius: 12px;
       --mono: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
@@ -50,7 +52,7 @@
     .legend { display: flex; flex-wrap: wrap; gap: 16px; padding: 18px 0; font: 11px var(--mono); color: var(--muted); }
     .legend span { display: inline-flex; align-items: center; gap: 7px; }
     .dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
-    .c-win { color: var(--win); } .c-draw { color: var(--draw); } .c-loss { color: var(--loss); }
+    .c-win { color: var(--win); } .c-edge-win { color: var(--edge-win); } .c-draw { color: var(--draw); } .c-edge-loss { color: var(--edge-loss); } .c-loss { color: var(--loss); }
     .scoreboard { border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel); overflow: hidden; }
     .score-grid { display: grid; grid-template-columns: minmax(0, 1fr) 120px minmax(0, 1fr); min-height: 172px; }
     .nation-summary { padding: 26px; display: flex; flex-direction: column; justify-content: space-between; min-width: 0; }
@@ -71,9 +73,8 @@
     .prob-track { height: 3px; margin-top: 10px; overflow: hidden; background: var(--line); }
     .prob-track i { display: block; width: 0; height: 100%; background: currentColor; transition: width .35s ease; }
     .workspace { margin: 24px 0 70px; border-top: 1px solid var(--line); }
-    .workspace-head, .matchup-row { display: grid; grid-template-columns: 34px minmax(210px, 1fr) 88px minmax(210px, 1fr) 114px 78px 78px 78px 88px 30px; gap: 12px; align-items: center; }
-    .workspace-head { min-height: 54px; color: var(--muted); font: 10px var(--mono); letter-spacing: .1em; text-transform: uppercase; }
-    .head-away { text-align: right; }
+    .workspace-head, .matchup-row { display: grid; grid-template-columns: 34px minmax(210px, 1fr) 88px minmax(210px, 1fr) 114px 78px 78px 78px 100px 30px; gap: 12px; align-items: center; }
+    .workspace-head { min-height: 54px; color: var(--muted); font: 10px var(--mono); letter-spacing: .1em; text-align: center; text-transform: uppercase; }
     .matchup-row { min-height: 98px; border-top: 1px solid var(--line); position: relative; }
     .matchup-row:last-child { border-bottom: 1px solid var(--line); }
     .matchup-row::before { content: ""; position: absolute; left: 0; top: 20px; bottom: 20px; width: 2px; background: var(--status-color, var(--draw)); opacity: .8; }
@@ -89,10 +90,10 @@
     .rate { text-align: center; }
     .rate strong { display: block; color: var(--status-color, var(--draw)); font: 20px var(--mono); }
     .rate small { color: var(--muted); font: 9px var(--mono); text-transform: uppercase; letter-spacing: .09em; }
-    .stat { text-align: right; }
+    .stat { text-align: center; }
     .stat strong { display: block; font: 13px var(--mono); }
     .stat small { color: var(--muted); font-size: 10px; }
-    .outcome { justify-self: end; min-width: 78px; padding: 7px 8px; border: 1px solid currentColor; border-radius: 7px; color: var(--status-color, var(--draw)); font: 10px var(--mono); text-align: center; text-transform: uppercase; letter-spacing: .08em; }
+    .outcome { justify-self: center; min-width: 94px; padding: 7px 8px; border: 1px solid currentColor; border-radius: 7px; color: var(--status-color, var(--draw)); font: 10px var(--mono); text-align: center; white-space: nowrap; text-transform: uppercase; letter-spacing: .05em; }
     .detail-button { width: 30px; height: 30px; border: 1px solid var(--line); border-radius: 7px; color: var(--muted); background: transparent; font: 17px var(--mono); }
     .detail-button:hover, .detail-button[aria-expanded="true"] { color: var(--text); border-color: var(--line-bright); background: var(--panel-2); }
     .matchup-detail { grid-column: 2 / -1; display: none; grid-template-columns: 1.15fr 1fr 1fr 1fr 1fr; gap: 1px; margin: -5px 0 18px; background: var(--line); border: 1px solid var(--line); }
@@ -182,7 +183,7 @@
       *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; }
     }
     @media print {
-      :root { color-scheme: light; --bg: #fff; --panel: #fff; --panel-2: #f5f5f2; --line: #c9ccc5; --line-bright: #92988f; --text: #171a17; --muted: #596158; --accent: #607400; --accent-ink: #fff; --win: #39732b; --draw: #6b6558; --loss: #a73e2d; }
+      :root { color-scheme: light; --bg: #fff; --panel: #fff; --panel-2: #f5f5f2; --line: #c9ccc5; --line-bright: #92988f; --text: #171a17; --muted: #596158; --accent: #607400; --accent-ink: #fff; --win: #39732b; --edge-win: #657a31; --draw: #6b6558; --edge-loss: #956426; --loss: #a73e2d; }
       .top-actions, .detail-button { display: none; }
       .workspace { overflow: visible; }
       .workspace-head, .matchup-row { min-width: 0; }
@@ -205,9 +206,11 @@
 
   <main class="shell">
     <div class="legend" aria-label="Outcome thresholds">
-      <span class="c-win"><i class="dot"></i>&gt;55% win</span>
-      <span class="c-draw"><i class="dot"></i>45–55% draw</span>
-      <span class="c-loss"><i class="dot"></i>&lt;45% loss</span>
+      <span class="c-win"><i class="dot"></i>≥60% · 2 pts</span>
+      <span class="c-edge-win"><i class="dot"></i>&gt;55% · 1.5 pts</span>
+      <span class="c-draw"><i class="dot"></i>45–55% · 1 pt</span>
+      <span class="c-edge-loss"><i class="dot"></i>&lt;45% · 0.5 pts</span>
+      <span class="c-loss"><i class="dot"></i>≤40% · 0 pts</span>
     </div>
 
     <section class="scoreboard" aria-label="Nation result summary">
@@ -231,7 +234,7 @@
 
     <section class="workspace" aria-label="Eight roster matchups">
       <div class="workspace-head">
-        <span>#</span><span>Nation A coach / roster</span><span class="head-away">Score rate</span><span class="head-away">Nation B roster / coach</span><span>Historical record</span><span>Games</span><span>No-loss</span><span>Sample</span><span>Verdict</span><span></span>
+        <span>#</span><span>Nation A coach / roster</span><span>Score rate</span><span>Nation B roster / coach</span><span>Historical record</span><span>Games</span><span>No-loss</span><span>Sample</span><span>Points</span><span></span>
       </div>
       <div id="matchups"></div>
     </section>
@@ -244,7 +247,7 @@
       <article class="insight-panel">
         <div class="section-title"><h2>How to read this</h2><span>Model notes</span></div>
         <ul class="method-list">
-          <li><strong>Projected nation result</strong>Each fixture is classified by its score rate. A nation wins when guaranteed wins outnumber guaranteed losses; draws add zero.</li>
+          <li><strong>Projected nation result</strong>Each fixture awards two points: 2–0 at 60% or more, 1.5–0.5 above 55%, 1–1 from 45% through 55%, 0.5–1.5 below 45%, and 0–2 at 40% or less. The Nation with more total points wins.</li>
           <li><strong>Unique national rosters</strong>Each roster can be selected only once within a Nation. Both opposing Nations may still use the same roster.</li>
           <li><strong>Nation certainty</strong>The model combines the observed win, draw and loss frequencies of all eight independent fixtures. It reports the chance of finishing with more actual wins than losses.</li>
           <li><strong>Sample strength</strong>Low is fewer than 10 historical games, medium is 10–29, and high is 30 or more. Certainty reflects results, not data quality, so inspect small samples carefully.</li>
@@ -316,10 +319,16 @@
           source = "derived from reciprocal record";
         }
       }
-      if (!raw) return { g: 0, w: 0, d: 0, l: 0, rate: .5, noLoss: 1, verdict: "draw", source: "no data", strength: "none" };
+      if (!raw) return { g: 0, w: 0, d: 0, l: 0, rate: .5, noLoss: 1, verdict: "draw", homePoints: 1, awayPoints: 1, label: "draw", source: "no data", strength: "none" };
       const [g, w, d, l] = raw;
       const rate = (w + d * .5) / g;
-      return { g, w, d, l, rate, noLoss: (w + d) / g, verdict: rate > .55 ? "win" : rate < .45 ? "loss" : "draw", source, strength: g >= 30 ? "high" : g >= 10 ? "medium" : "low" };
+      let verdict, homePoints, label;
+      if (rate >= .6) [verdict, homePoints, label] = ["win", 2, "secure win"];
+      else if (rate > .55) [verdict, homePoints, label] = ["edge-win", 1.5, "edge"];
+      else if (rate >= .45) [verdict, homePoints, label] = ["draw", 1, "draw"];
+      else if (rate > .4) [verdict, homePoints, label] = ["edge-loss", .5, "at risk"];
+      else [verdict, homePoints, label] = ["loss", 0, "secure loss"];
+      return { g, w, d, l, rate, noLoss: (w + d) / g, verdict, homePoints, awayPoints: 2 - homePoints, label, source, strength: g >= 30 ? "high" : g >= 10 ? "medium" : "low" };
     }
 
     function nationProbability(rows) {
@@ -357,7 +366,7 @@
           <div class="stat games-stat"><strong>${row.g || "—"}</strong><small>played</small></div>
           <div class="stat noloss-stat"><strong>${row.g ? pct(row.noLoss) : "—"}</strong><small>W + D</small></div>
           <div class="stat sample-stat"><strong>${row.strength}</strong><small>strength</small></div>
-          <div class="outcome">${row.verdict === "draw" ? "draw" : "guaranteed " + row.verdict}</div>
+          <div class="outcome" title="${row.label}">${row.homePoints}–${row.awayPoints} pts</div>
           <button class="detail-button" type="button" data-detail="${index}" aria-expanded="${expanded}" aria-label="Toggle details for pairing ${index + 1}">${expanded ? "−" : "+"}</button>
           <div class="matchup-detail${expanded ? " open" : ""}">
             <div class="detail-cell note"><small>Data source</small><strong>${sourceNote}</strong></div>
@@ -371,14 +380,14 @@
     }
 
     function renderSummary(rows) {
-      const counts = { win: 0, draw: 0, loss: 0 };
-      rows.forEach((row) => counts[row.verdict]++);
-      const result = counts.win > counts.loss ? "win" : counts.win < counts.loss ? "loss" : "draw";
+      const homePoints = rows.reduce((sum, row) => sum + row.homePoints, 0);
+      const awayPoints = rows.reduce((sum, row) => sum + row.awayPoints, 0);
+      const result = homePoints > awayPoints ? "win" : homePoints < awayPoints ? "loss" : "draw";
       const probability = nationProbability(rows);
-      $("#homeRecord").innerHTML = `<span><b>${counts.win}</b> W</span><span><b>${counts.draw}</b> D</span><span><b>${counts.loss}</b> L</span>`;
-      $("#awayRecord").innerHTML = `<span><b>${counts.loss}</b> W</span><span><b>${counts.draw}</b> D</span><span><b>${counts.win}</b> L</span>`;
+      $("#homeRecord").innerHTML = `<span><b>${homePoints}</b> projected points</span>`;
+      $("#awayRecord").innerHTML = `<span><b>${awayPoints}</b> projected points</span>`;
       $("#verdict").className = `verdict c-${result}`;
-      $("#verdict").innerHTML = `<strong>${counts.win}:${counts.loss}</strong><span>Projected ${result}</span>`;
+      $("#verdict").innerHTML = `<strong>${homePoints}:${awayPoints}</strong><span>Projected ${result}</span>`;
       const probabilities = [
         [state.homeName + " nation win", probability.win, "win"],
         ["Nation draw", probability.draw, "draw"],
