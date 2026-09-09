@@ -4,6 +4,9 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="color-scheme" content="dark">
+  <meta name="theme-color" content="#101310">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <title>Eightfold | Nation Matchup Lab</title>
   <style>
     :root {
@@ -44,12 +47,7 @@
     .button:active { transform: translateY(1px); }
     .button.primary { color: var(--accent-ink); background: var(--accent); border-color: var(--accent); }
     .button.primary:hover { background: #e4fa6f; }
-    .hero { display: grid; grid-template-columns: minmax(0, 1.45fr) minmax(310px, .55fr); gap: 56px; align-items: end; padding: 58px 0 38px; }
-    .eyebrow { margin: 0 0 16px; color: var(--accent); font: 11px var(--mono); letter-spacing: .15em; text-transform: uppercase; }
-    h1 { max-width: 780px; margin: 0; font-size: clamp(42px, 5.2vw, 76px); line-height: .94; letter-spacing: -.055em; font-weight: 650; }
-    .hero-copy { max-width: 480px; justify-self: end; color: var(--muted); font-size: 15px; }
-    .hero-copy strong { color: var(--text); font-weight: 600; }
-    .legend { display: flex; flex-wrap: wrap; gap: 16px; margin-top: 20px; font: 11px var(--mono); color: var(--muted); }
+    .legend { display: flex; flex-wrap: wrap; gap: 16px; padding: 18px 0; font: 11px var(--mono); color: var(--muted); }
     .legend span { display: inline-flex; align-items: center; gap: 7px; }
     .dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
     .c-win { color: var(--win); } .c-draw { color: var(--draw); } .c-loss { color: var(--loss); }
@@ -128,23 +126,57 @@
     @media (max-width: 760px) {
       .shell { width: min(100% - 24px, 1480px); }
       .topbar { min-height: 62px; }
+      .top-actions { gap: 6px; }
       .brand span { display: none; }
-      .button { padding: 0 10px; }
+      .mark { width: 30px; height: 30px; }
+      .button { min-height: 42px; padding: 0 10px; }
       .button-label { display: none; }
-      .hero { grid-template-columns: 1fr; gap: 20px; padding: 42px 0 30px; }
-      h1 { max-width: 590px; font-size: clamp(40px, 13vw, 62px); }
-      .hero-copy { justify-self: start; }
-      .score-grid { grid-template-columns: 1fr 72px 1fr; min-height: 148px; }
-      .nation-summary { padding: 17px 12px; }
-      .nation-name-display { font-size: 18px; }
+      .legend { justify-content: center; gap: 8px 14px; padding: 14px 0; font-size: 10px; }
+      .score-grid { grid-template-columns: 1fr 1fr; grid-template-areas: "home away" "verdict verdict"; min-height: 0; }
+      .nation-summary { min-height: 116px; padding: 16px 14px; }
+      .nation-summary:first-child { grid-area: home; }
+      .nation-summary.away { grid-area: away; border-left: 1px solid var(--line); }
+      .nation-name-display { font-size: 17px; }
       .record { gap: 7px; font-size: 10px; }
       .record b { font-size: 14px; }
+      .verdict { grid-area: verdict; min-height: 66px; border: 0; border-top: 1px solid var(--line); flex-direction: row; gap: 14px; }
       .verdict strong { font-size: 28px; }
-      .probability-row { grid-template-columns: 1fr; }
-      .probability { border-right: 0; border-bottom: 1px solid var(--line); }
-      .probability:last-child { border-bottom: 0; }
+      .verdict span { margin-top: 0; }
+      .probability-row { grid-template-columns: repeat(3, 1fr); }
+      .probability { min-width: 0; padding: 13px 10px; }
+      .probability small { min-height: 28px; font-size: 8px; line-height: 1.35; }
+      .probability strong { font-size: 16px; }
+      .workspace { margin: 16px 0 42px; overflow: visible; border-top: 0; }
+      .workspace-head { display: none; }
+      .matchup-row { min-width: 0; min-height: 0; margin-bottom: 12px; padding: 14px; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); grid-template-areas: "slot slot outcome outcome" "home home home home" "rate rate rate rate" "away away away away" "history games noloss sample" "toggle toggle toggle toggle" "details details details details"; gap: 10px 8px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel); }
+      .matchup-row:last-child { border-bottom: 1px solid var(--line); }
+      .matchup-row::before { top: 14px; bottom: 14px; left: -1px; width: 3px; border-radius: 3px; }
+      .slot { grid-area: slot; align-self: center; text-align: left; }
+      .home-entry { grid-area: home; }
+      .away-entry { grid-area: away; direction: ltr; }
+      .team-entry { grid-template-columns: minmax(0, .8fr) minmax(0, 1.2fr); }
+      .field { height: 46px; font-size: 16px; }
+      select.field { background-position: calc(100% - 16px) 20px, calc(100% - 11px) 20px; }
+      .rate { grid-area: rate; padding: 3px 0 5px; border-block: 1px solid var(--line); }
+      .rate strong { font-size: 24px; }
+      .history-stat { grid-area: history; }
+      .games-stat { grid-area: games; }
+      .noloss-stat { grid-area: noloss; }
+      .sample-stat { grid-area: sample; }
+      .stat { min-width: 0; text-align: center; }
+      .stat strong { overflow: hidden; font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
+      .stat small { display: block; font-size: 8px; }
+      .outcome { grid-area: outcome; justify-self: end; max-width: 150px; }
+      .detail-button { grid-area: toggle; width: 100%; height: 42px; margin-top: 2px; }
+      .matchup-detail { grid-area: details; min-width: 0; grid-column: auto; grid-template-columns: 1fr 1fr; margin: 0; }
+      .detail-cell { min-height: 68px; padding: 12px; }
+      .detail-cell.note { grid-column: 1 / -1; }
       .insights { grid-template-columns: 1fr; }
       .insight-panel { padding: 18px; }
+      .section-title { align-items: flex-start; }
+      .section-title span { max-width: 130px; text-align: right; }
+      .swing-item { grid-template-columns: 24px minmax(0, 1fr) auto; gap: 8px; padding: 0 10px; }
+      .swing-value { font-size: 12px; }
     }
     @media (prefers-reduced-motion: reduce) {
       *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; }
@@ -152,7 +184,6 @@
     @media print {
       :root { color-scheme: light; --bg: #fff; --panel: #fff; --panel-2: #f5f5f2; --line: #c9ccc5; --line-bright: #92988f; --text: #171a17; --muted: #596158; --accent: #607400; --accent-ink: #fff; --win: #39732b; --draw: #6b6558; --loss: #a73e2d; }
       .top-actions, .detail-button { display: none; }
-      .hero { padding-top: 30px; }
       .workspace { overflow: visible; }
       .workspace-head, .matchup-row { min-width: 0; }
       .insights { break-inside: avoid; }
@@ -173,20 +204,11 @@
   </header>
 
   <main class="shell">
-    <section class="hero">
-      <div>
-        <p class="eyebrow">European championship planning / 8 fixtures</p>
-        <h1>Read the matchup before kickoff.</h1>
-      </div>
-      <div class="hero-copy">
-        Build two nations of eight coaches. Every roster change recalculates the projected score and historical certainty. <strong>Score rate includes half a point per draw.</strong>
-        <div class="legend" aria-label="Outcome thresholds">
-          <span class="c-win"><i class="dot"></i>&gt;55% win</span>
-          <span class="c-draw"><i class="dot"></i>45–55% draw</span>
-          <span class="c-loss"><i class="dot"></i>&lt;45% loss</span>
-        </div>
-      </div>
-    </section>
+    <div class="legend" aria-label="Outcome thresholds">
+      <span class="c-win"><i class="dot"></i>&gt;55% win</span>
+      <span class="c-draw"><i class="dot"></i>45–55% draw</span>
+      <span class="c-loss"><i class="dot"></i>&lt;45% loss</span>
+    </div>
 
     <section class="scoreboard" aria-label="Nation result summary">
       <div class="score-grid">
@@ -322,7 +344,7 @@
         const sourceNote = row.source === "direct" ? "Direct record from the selected Nation A roster file." : row.source === "no data" ? "No supplied record in either direction. Treated as a neutral draw." : "Nation A record reconstructed by reversing Nation B's supplied results.";
         return `<div class="matchup-row" style="--status-color:${statusColor}" data-row="${index}">
           <span class="slot">${String(index + 1).padStart(2, "0")}</span>
-          <div class="team-entry">
+          <div class="team-entry home-entry">
             <input class="field coach" data-side="home" data-index="${index}" value="${escapeHtml(state.home[index].coach)}" placeholder="Coach" aria-label="Nation A coach ${index + 1}">
             <select class="field roster" data-side="home" data-index="${index}" aria-label="Nation A roster ${index + 1}">${options(state.home[index].roster, "home", index)}</select>
           </div>
@@ -331,10 +353,10 @@
             <input class="field coach" data-side="away" data-index="${index}" value="${escapeHtml(state.away[index].coach)}" placeholder="Coach" aria-label="Nation B coach ${index + 1}">
             <select class="field roster" data-side="away" data-index="${index}" aria-label="Nation B roster ${index + 1}">${options(state.away[index].roster, "away", index)}</select>
           </div>
-          <div class="stat"><strong>${row.g ? `${row.w}–${row.d}–${row.l}` : "No record"}</strong><small>W–D–L</small></div>
-          <div class="stat"><strong>${row.g || "—"}</strong><small>played</small></div>
-          <div class="stat"><strong>${row.g ? pct(row.noLoss) : "—"}</strong><small>W + D</small></div>
-          <div class="stat"><strong>${row.strength}</strong><small>strength</small></div>
+          <div class="stat history-stat"><strong>${row.g ? `${row.w}–${row.d}–${row.l}` : "No record"}</strong><small>W–D–L</small></div>
+          <div class="stat games-stat"><strong>${row.g || "—"}</strong><small>played</small></div>
+          <div class="stat noloss-stat"><strong>${row.g ? pct(row.noLoss) : "—"}</strong><small>W + D</small></div>
+          <div class="stat sample-stat"><strong>${row.strength}</strong><small>strength</small></div>
           <div class="outcome">${row.verdict === "draw" ? "draw" : "guaranteed " + row.verdict}</div>
           <button class="detail-button" type="button" data-detail="${index}" aria-expanded="${expanded}" aria-label="Toggle details for pairing ${index + 1}">${expanded ? "−" : "+"}</button>
           <div class="matchup-detail${expanded ? " open" : ""}">
