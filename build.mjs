@@ -137,7 +137,7 @@ const html = `<!doctype html>
     .probability strong { font: 20px var(--mono); }
     .prob-track { height: 3px; margin-top: 10px; overflow: hidden; background: var(--line); }
     .prob-track i { display: block; width: 0; height: 100%; background: currentColor; transition: width .35s ease; }
-    .workspace { margin: 24px 0 70px; border-top: 1px solid var(--line); }
+    .workspace { margin: 24px 0 24px; border-top: 1px solid var(--line); }
     .workspace-head, .matchup-row { display: grid; grid-template-columns: 34px minmax(210px, 1fr) 88px minmax(210px, 1fr) 114px 78px 78px 78px 100px 30px; gap: 12px; align-items: center; }
     .workspace-head { min-height: 54px; color: var(--muted); font: 10px var(--mono); letter-spacing: .1em; text-align: center; text-transform: uppercase; }
     .matchup-row { min-height: 98px; border-top: 1px solid var(--line); position: relative; }
@@ -204,8 +204,8 @@ const html = `<!doctype html>
     .comparison-strip small { display: block; color: var(--muted); font: 8px var(--mono); text-transform: uppercase; }
     .comparison-strip strong { font: 13px var(--mono); }
     .empty { color: var(--muted); font-size: 12px; }
-    .meta-window { margin-bottom: 14px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel); overflow: hidden; }
-    .meta-window[hidden] { display: none; }
+    .meta-window { margin-bottom: 24px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel); overflow: hidden; }
+    .meta-window[hidden], .optimizer[hidden], .insights[hidden], .drift-panel[hidden] { display: none; }
     .window-head { display: flex; align-items: center; justify-content: space-between; gap: 18px; padding: 12px 14px; border-bottom: 1px solid var(--line); }
     .window-head strong { display: block; font-size: 12px; }
     .window-head span { color: var(--muted); font-size: 10px; }
@@ -225,7 +225,7 @@ const html = `<!doctype html>
     .week-bar.eb i { background: transparent; border: 1px dashed var(--loss); border-bottom: 0; height: 100% !important; }
     .week-bar:hover i { background: var(--text); }
     .week-axis { display: flex; justify-content: space-between; padding: 5px 14px 9px; color: var(--muted); font: 9px var(--mono); }
-    .drift-panel { margin-top: 0; border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel); padding: 24px; }
+    .drift-panel { margin: 0 0 70px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel); padding: 24px; }
     .drift-summary { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px; margin-bottom: 16px; border: 1px solid var(--line); background: var(--line); }
     .drift-summary div { padding: 12px; background: var(--panel-2); text-align: center; }
     .drift-summary small { display: block; color: var(--muted); font: 8px var(--mono); text-transform: uppercase; letter-spacing: .06em; }
@@ -351,6 +351,35 @@ const html = `<!doctype html>
       </div>
     </div>
 
+    <section class="scoreboard" aria-label="Nation result summary">
+      <div class="score-grid">
+        <div class="nation-summary">
+          <label class="sr-only" for="homeName">First Nation name</label>
+          <input class="sr-only" id="homeName" value="Home" maxlength="32">
+          <div class="nation-name-display" id="homeNameDisplay" title="Click to rename" tabindex="0" role="button">Home</div>
+        </div>
+        <div class="verdict" id="verdict"></div>
+        <div class="nation-summary away">
+          <label class="sr-only" for="awayName">Second Nation name</label>
+          <input class="sr-only" id="awayName" value="Away" maxlength="32">
+          <div class="nation-name-display" id="awayNameDisplay" title="Click to rename" tabindex="0" role="button">Away</div>
+        </div>
+      </div>
+      <div class="probability-row" id="probabilities"></div>
+    </section>
+
+    <section class="workspace" id="workspace" aria-label="EuroBowl roster matchups">
+      <div class="workspace-head">
+        <span>#</span><span>Home coach / roster</span><span>Score rate</span><span>Away roster / coach</span><span>Historical record</span><span>Games</span><span>No-loss</span><span>Sample</span><span>Points</span><span></span>
+      </div>
+      <div id="matchups"></div>
+      <div class="roster-actions top-actions">
+        <button class="button" id="swapButton" type="button" title="Swap nations">⇄ <span class="button-label">Swap sides</span></button>
+        <button class="button" id="resetButton" type="button">Reset</button>
+        <button class="button primary" id="printButton" type="button">Print <span class="button-label">report</span></button>
+      </div>
+    </section>
+
     <section class="meta-window" id="metaWindow" aria-label="Meta window">
       <div class="window-head">
         <div><strong>Meta window</strong><span id="windowSummary"></span></div>
@@ -374,51 +403,22 @@ const html = `<!doctype html>
       <div class="week-axis" id="weekAxis"></div>
     </section>
 
-    <section class="scoreboard" aria-label="Nation result summary">
-      <div class="score-grid">
-        <div class="nation-summary">
-          <label class="sr-only" for="homeName">First Nation name</label>
-          <input class="sr-only" id="homeName" value="Slovenia" maxlength="32">
-          <div class="nation-name-display" id="homeNameDisplay" title="Click to rename" tabindex="0" role="button">Slovenia</div>
-        </div>
-        <div class="verdict" id="verdict"></div>
-        <div class="nation-summary away">
-          <label class="sr-only" for="awayName">Second Nation name</label>
-          <input class="sr-only" id="awayName" value="Opponent" maxlength="32">
-          <div class="nation-name-display" id="awayNameDisplay" title="Click to rename" tabindex="0" role="button">Opponent</div>
-        </div>
-      </div>
-      <div class="probability-row" id="probabilities"></div>
-    </section>
-
-    <section class="workspace" id="workspace" aria-label="EuroBowl roster matchups">
-      <div class="workspace-head">
-        <span>#</span><span>Nation A coach / roster</span><span>Score rate</span><span>Nation B roster / coach</span><span>Historical record</span><span>Games</span><span>No-loss</span><span>Sample</span><span>Points</span><span></span>
-      </div>
-      <div id="matchups"></div>
-      <div class="roster-actions top-actions">
-        <button class="button" id="swapButton" type="button" title="Swap nations">⇄ <span class="button-label">Swap sides</span></button>
-        <button class="button" id="resetButton" type="button">Reset</button>
-        <button class="button primary" id="printButton" type="button">Print <span class="button-label">report</span></button>
-      </div>
-    </section>
-
     <section class="drift-panel" id="driftPanel" aria-label="Meta drift">
       <div class="section-title"><h2>Meta drift</h2><span id="driftCaption">Selected window vs all weeks since the ruleset</span></div>
       <div class="drift-summary" id="driftSummary"></div>
       <div id="driftRows"></div>
     </section>
 
-    <section class="optimizer" aria-label="Roster strategy optimizer">
+    <section class="optimizer" hidden aria-label="Roster strategy optimizer">
       <div class="optimizer-head">
-        <div><h2>Fixed-board roster strategies</h2><p id="optimizerDescription">Tests distinct Slovenian rosters against the 8 opponent rosters currently entered. Board order does not change.</p></div>
+        <div><h2>Fixed-board roster strategies</h2><p id="optimizerDescription">Tests distinct home rosters against the 8 opponent rosters currently entered. Board order does not change.</p></div>
         <button class="button primary" id="optimizeButton" type="button">Calculate strategies</button>
       </div>
       <div class="comparison-strip" id="comparisonStrip"></div>
       <div class="strategy-grid" id="strategyGrid"><div class="strategy-placeholder">Calculate to compare best average, highest win chance, and lowest loss risk.</div></div>
     </section>
 
-    <section class="insights">
+    <section class="insights" hidden>
       <article class="insight-panel">
         <div class="section-title"><h2>Pairing leverage</h2><span>Ranked by distance from 50%</span></div>
         <div class="swing-list" id="swingList"></div>
@@ -430,7 +430,7 @@ const html = `<!doctype html>
           <li><strong>Unique national rosters</strong>Each active roster can be selected only once within a Nation. EuroBowl uses eight coaches and EuroOpen uses four. Both opposing teams may still use the same roster.</li>
           <li><strong>Classic and Smart</strong>Classic reproduces the original raw-rate method. Smart shrinks small samples toward the dataset average, propagates uncertainty through point bands, and reports likely ranges. Switch at any time.</li>
           <li><strong>Smart prior</strong>The prior has the dataset-wide win/draw/loss proportions and the weight of six games. A matchup with six direct games therefore receives equal weight from direct evidence and the prior; larger samples receive progressively less shrinkage.</li>
-          <li><strong>Fixed boards</strong>Individual matchups follow fixed board order. The optimizer changes Slovenian roster choices only; it never rearranges coaches or boards.</li>
+          <li><strong>Fixed boards</strong>Individual matchups follow fixed board order. The optimizer changes home roster choices only; it never rearranges coaches or boards.</li>
           <li><strong>Team certainty</strong>The model combines the active fixtures' win, draw and loss probabilities using exact dynamic programming.</li>
           <li><strong>Optimizer scope</strong>Best average is a globally exact assignment. Highest win chance and lowest loss risk are broad constrained-search results because those nonlinear objectives are much larger; they are labeled searched rather than guaranteed optimal.</li>
           <li><strong>Sample strength</strong>Low is fewer than 10 historical games, medium is 10–29, and high is 30 or more. Certainty reflects results, not data quality, so inspect small samples carefully.</li>
@@ -520,12 +520,17 @@ const html = `<!doctype html>
       return {
         model: "classic",
         format: "eurobowl",
-        homeName: "Slovenia",
-        awayName: "Opponent",
+        homeName: "Home",
+        awayName: "Away",
         window: defaultWindow(),
         home: DEFAULT_HOME.map((roster) => ({ coach: "", roster })),
         away: DEFAULT_AWAY.map((roster) => ({ coach: "", roster }))
       };
+    }
+
+    function legacyName(value, legacy, fallback) {
+      const name = String(value || "").trim().slice(0, 32);
+      return !name || name === legacy ? fallback : name;
     }
 
     function loadState() {
@@ -541,7 +546,7 @@ const html = `<!doctype html>
             return entry;
           });
         };
-        return { model: stored.model === "smart" ? "smart" : "classic", format: stored.format === "euroopen" ? "euroopen" : "eurobowl", homeName: String(stored.homeName || "Slovenia").slice(0, 32), awayName: String(stored.awayName || "Opponent").slice(0, 32), window: validWindow(stored.window), home: unique(stored.home), away: unique(stored.away) };
+        return { model: stored.model === "smart" ? "smart" : "classic", format: stored.format === "euroopen" ? "euroopen" : "eurobowl", homeName: legacyName(stored.homeName, "Slovenia", "Home"), awayName: legacyName(stored.awayName, "Opponent", "Away"), window: validWindow(stored.window), home: unique(stored.home), away: unique(stored.away) };
       } catch { return freshState(); }
     }
 
@@ -928,7 +933,7 @@ const html = `<!doctype html>
       $("#modelTitle").textContent = smart ? "Smart calculation" : "Classic calculation";
       $("#modelDescription").textContent = smart ? "Bayesian smoothing, uncertainty-aware point bands, and model-based missing matchups." : "Raw historical percentages and fixed threshold bands.";
       $("#workspace").setAttribute("aria-label", (euroOpen ? "EuroOpen" : "EuroBowl") + " roster matchups");
-      $("#optimizerDescription").textContent = \`Tests distinct Slovenian rosters against the \${boardCount()} opponent rosters currently entered. Board order does not change.\`;
+      $("#optimizerDescription").textContent = \`Tests distinct home rosters against the \${boardCount()} opponent rosters currently entered. Board order does not change.\`;
       $("#homeName").value = state.homeName;
       $("#awayName").value = state.awayName;
       $("#homeNameDisplay").textContent = state.homeName;
@@ -968,7 +973,7 @@ const html = `<!doctype html>
 
     function finishNationEdit(side) {
       const input = $(\`#\${side}Name\`), display = $(\`#\${side}NameDisplay\`);
-      state[side + "Name"] = input.value.trim() || (side === "home" ? "Nation A" : "Nation B");
+      state[side + "Name"] = input.value.trim() || (side === "home" ? "Home" : "Away");
       input.classList.add("sr-only");
       input.classList.remove("field");
       display.hidden = false;
