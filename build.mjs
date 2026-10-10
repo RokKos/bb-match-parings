@@ -49,6 +49,19 @@ for (const roster of rosters) {
   }
 }
 
+// Weekly feed produced by scripts/fetch-weekly.mjs (optional).
+const weeklyFile = new URL("./data/weekly/weekly.json", import.meta.url);
+const weeklySource = fs.existsSync(weeklyFile) ? JSON.parse(fs.readFileSync(weeklyFile, "utf8")) : null;
+const weekly = weeklySource && {
+  generatedAt: weeklySource.generatedAt,
+  from: weeklySource.from,
+  to: weeklySource.to,
+  eurobowl: weeklySource.eurobowl,
+  sources: weeklySource.sources,
+  weeks: weeklySource.weeks.map((week) => week.start),
+  records: Object.fromEntries(Object.entries(weeklySource.records).map(([race, opponents]) => [canonical(race), Object.fromEntries(Object.entries(opponents).map(([opponent, cells]) => [canonical(opponent), cells]))]))
+};
+
 const html = `<!doctype html>
 <html lang="en">
 <head>
@@ -87,14 +100,8 @@ const html = `<!doctype html>
     button, select, input { color: inherit; }
     button { cursor: pointer; }
     .shell { width: min(1480px, calc(100% - 40px)); margin: 0 auto; }
-    .topbar { min-height: 72px; display: flex; align-items: center; justify-content: space-between; gap: 24px; border-bottom: 1px solid var(--line); }
-    .brand { display: flex; align-items: center; gap: 13px; min-width: 0; }
-    .mark { width: 34px; height: 34px; display: grid; grid-template-columns: repeat(2, 1fr); gap: 3px; transform: rotate(45deg); flex: 0 0 auto; }
-    .mark i { display: block; border: 1px solid var(--line-bright); background: var(--panel-2); }
-    .mark i:first-child, .mark i:last-child { background: var(--accent); border-color: var(--accent); }
-    .brand strong { display: block; font-size: 14px; letter-spacing: .11em; text-transform: uppercase; }
-    .brand span { color: var(--muted); font: 10px var(--mono); letter-spacing: .08em; text-transform: uppercase; }
     .top-actions { display: flex; gap: 8px; }
+    .roster-actions { display: flex; justify-content: flex-end; gap: 8px; padding: 16px 0 0; }
     .button { min-height: 38px; padding: 0 14px; border: 1px solid var(--line-bright); border-radius: 8px; background: transparent; font-size: 12px; font-weight: 650; transition: background .16s ease, border-color .16s ease, transform .1s ease; }
     .button:hover { background: var(--panel-2); border-color: var(--muted); }
     .button:active { transform: translateY(1px); }
@@ -105,6 +112,7 @@ const html = `<!doctype html>
     .analysis-bar { display: flex; align-items: center; justify-content: space-between; gap: 18px; margin-bottom: 14px; padding: 12px 14px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel); }
     .analysis-copy strong { display: block; font-size: 12px; }
     .analysis-copy span { color: var(--muted); font-size: 10px; }
+    .analysis-controls { display: flex; gap: 8px; flex: 0 0 auto; }
     .segmented { display: grid; grid-template-columns: 1fr 1fr; flex: 0 0 auto; padding: 3px; border: 1px solid var(--line); border-radius: 9px; background: var(--bg); }
     .segment { min-width: 82px; min-height: 34px; border: 0; border-radius: 6px; color: var(--muted); background: transparent; font-size: 11px; font-weight: 650; }
     .segment.active { color: var(--accent-ink); background: var(--accent); }
@@ -196,6 +204,42 @@ const html = `<!doctype html>
     .comparison-strip small { display: block; color: var(--muted); font: 8px var(--mono); text-transform: uppercase; }
     .comparison-strip strong { font: 13px var(--mono); }
     .empty { color: var(--muted); font-size: 12px; }
+    .meta-window { margin-bottom: 14px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel); overflow: hidden; }
+    .meta-window[hidden] { display: none; }
+    .window-head { display: flex; align-items: center; justify-content: space-between; gap: 18px; padding: 12px 14px; border-bottom: 1px solid var(--line); }
+    .window-head strong { display: block; font-size: 12px; }
+    .window-head span { color: var(--muted); font-size: 10px; }
+    .window-controls { display: flex; flex-wrap: wrap; align-items: end; gap: 10px 14px; padding: 12px 14px; }
+    .window-controls label { display: grid; gap: 4px; color: var(--muted); font: 9px var(--mono); letter-spacing: .08em; text-transform: uppercase; }
+    .window-controls select.field { width: 270px; height: 36px; font: 12px var(--mono); background-position: calc(100% - 16px) 15px, calc(100% - 11px) 15px; }
+    .window-controls select.field:disabled { opacity: .45; }
+    .preset-row { display: flex; flex-wrap: wrap; gap: 6px; margin-left: auto; }
+    .preset { min-height: 36px; padding: 0 11px; border: 1px solid var(--line); border-radius: 7px; color: var(--muted); background: transparent; font: 11px var(--mono); }
+    .preset:hover { color: var(--text); border-color: var(--line-bright); }
+    .preset.active { color: var(--accent-ink); background: var(--accent); border-color: var(--accent); }
+    .preset:disabled { opacity: .4; cursor: default; }
+    .week-strip { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); align-items: end; gap: 2px; height: 64px; padding: 8px 14px 0; border-top: 1px solid var(--line); }
+    .week-bar { position: relative; height: 100%; padding: 0; border: 0; background: transparent; display: flex; align-items: flex-end; }
+    .week-bar i { display: block; width: 100%; min-height: 2px; border-radius: 2px 2px 0 0; background: var(--line-bright); transition: background .16s ease; }
+    .week-bar.in i { background: var(--accent); }
+    .week-bar.eb i { background: transparent; border: 1px dashed var(--loss); border-bottom: 0; height: 100% !important; }
+    .week-bar:hover i { background: var(--text); }
+    .week-axis { display: flex; justify-content: space-between; padding: 5px 14px 9px; color: var(--muted); font: 9px var(--mono); }
+    .drift-panel { margin-top: 0; border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel); padding: 24px; }
+    .drift-summary { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px; margin-bottom: 16px; border: 1px solid var(--line); background: var(--line); }
+    .drift-summary div { padding: 12px; background: var(--panel-2); text-align: center; }
+    .drift-summary small { display: block; color: var(--muted); font: 8px var(--mono); text-transform: uppercase; letter-spacing: .06em; }
+    .drift-summary strong { font: 14px var(--mono); }
+    .drift-row { display: grid; grid-template-columns: 32px minmax(0, 1.4fr) 1fr 1fr 90px 90px; gap: 12px; align-items: center; min-height: 52px; padding: 0 14px; border-top: 1px solid var(--line); font-size: 12px; }
+    .drift-row.head { min-height: 34px; border-top: 0; color: var(--muted); font: 9px var(--mono); letter-spacing: .08em; text-transform: uppercase; }
+    .drift-row .num { color: var(--muted); font: 10px var(--mono); }
+    .drift-row b { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
+    .drift-row small { color: var(--muted); font: 10px var(--mono); }
+    .drift-row .val { font: 13px var(--mono); }
+    .delta-up { color: var(--win); } .delta-down { color: var(--loss); } .delta-flat { color: var(--muted); }
+    .detail-cell.trend { grid-column: span 2; }
+    .trend svg { display: block; width: 100%; height: 54px; overflow: visible; }
+    .trend-caption { display: flex; justify-content: space-between; margin-top: 3px; color: var(--muted); font: 8px var(--mono); }
     .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
     @media (max-width: 1180px) {
       .workspace { overflow-x: auto; }
@@ -204,14 +248,13 @@ const html = `<!doctype html>
     }
     @media (max-width: 760px) {
       .shell { width: min(100% - 24px, 1480px); }
-      .topbar { min-height: 62px; }
       .top-actions { gap: 6px; }
-      .brand span { display: none; }
-      .mark { width: 30px; height: 30px; }
+      .roster-actions { display: grid; grid-template-columns: repeat(3, 1fr); }
       .button { min-height: 42px; padding: 0 10px; }
       .button-label { display: none; }
       .legend { justify-content: center; gap: 8px 14px; padding: 14px 0; font-size: 10px; }
       .analysis-bar { align-items: stretch; flex-direction: column; }
+      .analysis-controls { display: grid; grid-template-columns: 1fr; }
       .segmented { width: 100%; }
       .score-grid { grid-template-columns: 1fr 1fr; grid-template-areas: "home away" "verdict verdict"; min-height: 0; }
       .nation-summary { min-height: 86px; padding: 16px 14px; }
@@ -251,7 +294,15 @@ const html = `<!doctype html>
       .detail-button { grid-area: toggle; width: 100%; height: 42px; margin-top: 2px; }
       .matchup-detail { grid-area: details; min-width: 0; grid-column: auto; grid-template-columns: 1fr 1fr; margin: 0; }
       .detail-cell { min-height: 68px; padding: 12px; }
-      .detail-cell.note { grid-column: 1 / -1; }
+      .detail-cell.note, .detail-cell.trend { grid-column: 1 / -1; }
+      .window-head { align-items: stretch; flex-direction: column; }
+      .window-controls label, .window-controls select.field { width: 100%; }
+      .preset-row { margin-left: 0; width: 100%; }
+      .preset { flex: 1 1 auto; }
+      .drift-panel { padding: 18px 12px; }
+      .drift-summary { grid-template-columns: 1fr 1fr; }
+      .drift-row { grid-template-columns: 22px minmax(0, 1fr) 70px 64px; gap: 8px; padding: 8px 6px; }
+      .drift-row .col-base, .drift-row .col-points { display: none; }
       .insights { grid-template-columns: 1fr; }
       .insight-panel { padding: 18px; }
       .optimizer-head { align-items: stretch; flex-direction: column; padding: 18px; }
@@ -271,23 +322,12 @@ const html = `<!doctype html>
       .top-actions, .detail-button { display: none; }
       .workspace { overflow: visible; }
       .workspace-head, .matchup-row { min-width: 0; }
-      .insights { break-inside: avoid; }
+      .insights, .drift-panel { break-inside: avoid; }
+      .preset-row, .week-strip, .week-axis, .window-controls { display: none; }
     }
   </style>
 </head>
 <body>
-  <header class="shell topbar">
-    <div class="brand">
-      <span class="mark" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
-      <div><strong>Eightfold</strong><span>Nation matchup lab</span></div>
-    </div>
-    <div class="top-actions">
-      <button class="button" id="swapButton" type="button" title="Swap nations">⇄ <span class="button-label">Swap sides</span></button>
-      <button class="button" id="resetButton" type="button">Reset</button>
-      <button class="button primary" id="printButton" type="button">Print <span class="button-label">report</span></button>
-    </div>
-  </header>
-
   <main class="shell">
     <div class="legend" aria-label="Outcome thresholds">
       <span class="c-win"><i class="dot"></i>≥60% · 2 pts</span>
@@ -299,11 +339,40 @@ const html = `<!doctype html>
 
     <div class="analysis-bar">
       <div class="analysis-copy"><strong id="modelTitle">Classic calculation</strong><span id="modelDescription">Raw historical percentages and fixed threshold bands.</span></div>
-      <div class="segmented" role="group" aria-label="Calculation model">
-        <button class="segment active" id="classicModel" type="button">Classic</button>
-        <button class="segment" id="smartModel" type="button">Smart</button>
+      <div class="analysis-controls">
+        <div class="segmented" role="group" aria-label="Tournament format">
+          <button class="segment active" id="euroBowlFormat" type="button">EuroBowl 8</button>
+          <button class="segment" id="euroOpenFormat" type="button">EuroOpen 4</button>
+        </div>
+        <div class="segmented" role="group" aria-label="Calculation model">
+          <button class="segment active" id="classicModel" type="button">Classic</button>
+          <button class="segment" id="smartModel" type="button">Smart</button>
+        </div>
       </div>
     </div>
+
+    <section class="meta-window" id="metaWindow" aria-label="Meta window">
+      <div class="window-head">
+        <div><strong>Meta window</strong><span id="windowSummary"></span></div>
+        <div class="segmented" role="group" aria-label="Data source">
+          <button class="segment" id="weeklySource" type="button">Weekly feed</button>
+          <button class="segment" id="csvSource" type="button">CSV snapshot</button>
+        </div>
+      </div>
+      <div class="window-controls">
+        <label for="windowFrom">From week<select class="field" id="windowFrom"></select></label>
+        <label for="windowTo">To week<select class="field" id="windowTo"></select></label>
+        <div class="preset-row" role="group" aria-label="Window presets">
+          <button class="preset" type="button" data-preset="all">Since ruleset</button>
+          <button class="preset" type="button" data-preset="16">Last 16 wks</button>
+          <button class="preset" type="button" data-preset="12">Last 12 wks</button>
+          <button class="preset" type="button" data-preset="8">Last 8 wks</button>
+          <button class="preset" type="button" data-preset="4">Last 4 wks</button>
+        </div>
+      </div>
+      <div class="week-strip" id="weekStrip" title="Games per week. Click a week to start the window there; Shift-click to end it there."></div>
+      <div class="week-axis" id="weekAxis"></div>
+    </section>
 
     <section class="scoreboard" aria-label="Nation result summary">
       <div class="score-grid">
@@ -322,16 +391,27 @@ const html = `<!doctype html>
       <div class="probability-row" id="probabilities"></div>
     </section>
 
-    <section class="workspace" aria-label="Eight roster matchups">
+    <section class="workspace" id="workspace" aria-label="EuroBowl roster matchups">
       <div class="workspace-head">
         <span>#</span><span>Nation A coach / roster</span><span>Score rate</span><span>Nation B roster / coach</span><span>Historical record</span><span>Games</span><span>No-loss</span><span>Sample</span><span>Points</span><span></span>
       </div>
       <div id="matchups"></div>
+      <div class="roster-actions top-actions">
+        <button class="button" id="swapButton" type="button" title="Swap nations">⇄ <span class="button-label">Swap sides</span></button>
+        <button class="button" id="resetButton" type="button">Reset</button>
+        <button class="button primary" id="printButton" type="button">Print <span class="button-label">report</span></button>
+      </div>
+    </section>
+
+    <section class="drift-panel" id="driftPanel" aria-label="Meta drift">
+      <div class="section-title"><h2>Meta drift</h2><span id="driftCaption">Selected window vs all weeks since the ruleset</span></div>
+      <div class="drift-summary" id="driftSummary"></div>
+      <div id="driftRows"></div>
     </section>
 
     <section class="optimizer" aria-label="Roster strategy optimizer">
       <div class="optimizer-head">
-        <div><h2>Fixed-board roster strategies</h2><p>Tests distinct Slovenian rosters against the eight opponent rosters currently entered. Board order does not change.</p></div>
+        <div><h2>Fixed-board roster strategies</h2><p id="optimizerDescription">Tests distinct Slovenian rosters against the 8 opponent rosters currently entered. Board order does not change.</p></div>
         <button class="button primary" id="optimizeButton" type="button">Calculate strategies</button>
       </div>
       <div class="comparison-strip" id="comparisonStrip"></div>
@@ -347,13 +427,14 @@ const html = `<!doctype html>
         <div class="section-title"><h2>How to read this</h2><span>Model notes</span></div>
         <ul class="method-list">
           <li><strong>Projected nation result</strong>Each fixture awards two points: 2–0 at 60% or more, 1.5–0.5 above 55%, 1–1 from 45% through 55%, 0.5–1.5 below 45%, and 0–2 at 40% or less. The Nation with more total points wins.</li>
-          <li><strong>Unique national rosters</strong>Each roster can be selected only once within a Nation. Both opposing Nations may still use the same roster.</li>
+          <li><strong>Unique national rosters</strong>Each active roster can be selected only once within a Nation. EuroBowl uses eight coaches and EuroOpen uses four. Both opposing teams may still use the same roster.</li>
           <li><strong>Classic and Smart</strong>Classic reproduces the original raw-rate method. Smart shrinks small samples toward the dataset average, propagates uncertainty through point bands, and reports likely ranges. Switch at any time.</li>
           <li><strong>Smart prior</strong>The prior has the dataset-wide win/draw/loss proportions and the weight of six games. A matchup with six direct games therefore receives equal weight from direct evidence and the prior; larger samples receive progressively less shrinkage.</li>
-          <li><strong>Fixed boards</strong>EuroBowl individual matchups are random within the paired Nations and follow fixed board order. The optimizer changes Slovenian roster choices only; it never rearranges coaches or boards.</li>
-          <li><strong>Nation certainty</strong>The model combines the win, draw and loss probabilities of all eight independent fixtures using exact dynamic programming.</li>
+          <li><strong>Fixed boards</strong>Individual matchups follow fixed board order. The optimizer changes Slovenian roster choices only; it never rearranges coaches or boards.</li>
+          <li><strong>Team certainty</strong>The model combines the active fixtures' win, draw and loss probabilities using exact dynamic programming.</li>
           <li><strong>Optimizer scope</strong>Best average is a globally exact assignment. Highest win chance and lowest loss risk are broad constrained-search results because those nonlinear objectives are much larger; they are labeled searched rather than guaranteed optimal.</li>
           <li><strong>Sample strength</strong>Low is fewer than 10 historical games, medium is 10–29, and high is 30 or more. Certainty reflects results, not data quality, so inspect small samples carefully.</li>
+          <li><strong>Meta window</strong>The weekly feed holds every NAF and FUMBBL Road to EuroBowl game since the final ruleset, bucketed Monday–Sunday. Narrow the window toward EuroBowl to weight the current meta; Meta drift compares it against all weeks since the ruleset. Short windows mean small samples, so Smart mode is recommended.</li>
           <li><strong>Data recovery</strong>Roster aliases are merged. If one matchup direction is missing, the reciprocal record is reversed and marked as derived. No-data pairings stay neutral.</li>
         </ul>
         <p class="footnote" id="dataNote"></p>
@@ -363,8 +444,69 @@ const html = `<!doctype html>
 
   <script>
     "use strict";
-    const DATA = ${JSON.stringify(compact)};
+    const CSV_DATA = ${JSON.stringify(compact)};
+    const WEEKLY = ${JSON.stringify(weekly)};
     const ROSTERS = ${JSON.stringify(rosters)};
+    const KAPPA = 6;
+    const DAY = 86400000;
+    const WEEK_COUNT = WEEKLY ? WEEKLY.weeks.length : 0;
+    const WEEK_GAMES = Array(WEEK_COUNT).fill(0);
+    if (WEEKLY) for (const opponents of Object.values(WEEKLY.records)) for (const cells of Object.values(opponents)) for (const [week, w, d, l] of cells) WEEK_GAMES[week] += w + d + l;
+    const LAST_WEEK = WEEK_GAMES.reduce((last, games, index) => games ? index : last, Math.max(0, WEEK_COUNT - 1));
+    const PRESETS = ["all", "16", "12", "8", "4"];
+    const isoDate = (iso) => new Date(iso + "T00:00:00Z");
+    const mondayOf = (date) => new Date(date.getTime() - ((date.getUTCDay() + 6) % 7) * DAY);
+    const EUROBOWL = isoDate((WEEKLY && WEEKLY.eurobowl) || "2026-10-16");
+    const shortDate = (date) => date.toLocaleDateString("en-GB", { day: "numeric", month: "short", timeZone: "UTC" });
+    const weekStart = (index) => isoDate(WEEKLY.weeks[0]).getTime() + index * 7 * DAY;
+    const weekLabel = (index) => \`\${shortDate(new Date(weekStart(index)))} – \${shortDate(new Date(weekStart(index) + 6 * DAY))}\`;
+    const weeksToEb = (index) => Math.round((mondayOf(EUROBOWL).getTime() - weekStart(index)) / (7 * DAY));
+    const gamesIn = (from, to) => WEEK_GAMES.slice(from, to + 1).reduce((sum, games) => sum + games, 0) / 2;
+
+    function windowCounts(from, to) {
+      const data = {};
+      for (const [race, opponents] of Object.entries(WEEKLY.records)) for (const [opponent, cells] of Object.entries(opponents)) {
+        let w = 0, d = 0, l = 0;
+        for (const [week, cw, cd, cl] of cells) if (week >= from && week <= to) { w += cw; d += cd; l += cl; }
+        if (w + d + l) (data[race] ||= {})[opponent] = [w + d + l, w, d, l, 0];
+      }
+      return data;
+    }
+
+    function makeDataset(data, label) {
+      const counts = Object.values(data).flatMap(Object.values).reduce((sum, row) => [sum[0] + row[1], sum[1] + row[2], sum[2] + row[3]], [0, 0, 0]);
+      const total = counts.reduce((sum, value) => sum + value, 0);
+      return { data, label, prior: total ? counts.map((value) => KAPPA * value / total) : [KAPPA / 3, KAPPA / 3, KAPPA / 3] };
+    }
+
+    const CSV_SET = makeDataset(CSV_DATA, "CSV snapshot");
+    const BASELINE = WEEKLY ? makeDataset(windowCounts(0, WEEK_COUNT - 1), "all weeks since ruleset") : CSV_SET;
+    let ACTIVE = BASELINE;
+
+    function presetRange(preset) {
+      if (preset === "all") return [0, LAST_WEEK];
+      return [Math.max(0, LAST_WEEK - Number(preset) + 1), LAST_WEEK];
+    }
+
+    function defaultWindow() {
+      return { source: WEEKLY ? "weekly" : "csv", from: 0, to: LAST_WEEK, preset: "all" };
+    }
+
+    function validWindow(stored) {
+      if (!stored || typeof stored !== "object") return defaultWindow();
+      const source = stored.source === "csv" || !WEEKLY ? "csv" : "weekly";
+      const preset = PRESETS.includes(String(stored.preset)) ? String(stored.preset) : null;
+      if (preset) { const [from, to] = presetRange(preset); return { source, from, to, preset }; }
+      const clamp = (value, fallback) => Number.isInteger(value) ? Math.min(Math.max(value, 0), Math.max(WEEK_COUNT - 1, 0)) : fallback;
+      let from = clamp(stored.from, 0), to = clamp(stored.to, LAST_WEEK);
+      if (from > to) [from, to] = [to, from];
+      return { source, from, to, preset: null };
+    }
+
+    function applyWindow() {
+      const { source, from, to } = state.window;
+      ACTIVE = source === "csv" || !WEEKLY ? CSV_SET : makeDataset(windowCounts(from, to), \`\${weekLabel(from)} → \${weekLabel(to)}\`);
+    }
     const STORAGE_KEY = "eightfold-matchup-v1";
     const DEFAULT_HOME = ["Amazons", "Bretonian", "Dark Elf", "Dwarf", "High Elf", "Human", "Lizardmen", "Wood Elf"].map(canonicalRoster);
     const DEFAULT_AWAY = ["Orc", "Shambling Undead", "Skaven", "Norse", "Chaos Dwarf", "Necromantic Horror", "Khorne", "Vampire"];
@@ -377,8 +519,10 @@ const html = `<!doctype html>
     function freshState() {
       return {
         model: "classic",
+        format: "eurobowl",
         homeName: "Slovenia",
         awayName: "Opponent",
+        window: defaultWindow(),
         home: DEFAULT_HOME.map((roster) => ({ coach: "", roster })),
         away: DEFAULT_AWAY.map((roster) => ({ coach: "", roster }))
       };
@@ -397,7 +541,7 @@ const html = `<!doctype html>
             return entry;
           });
         };
-        return { model: stored.model === "smart" ? "smart" : "classic", homeName: String(stored.homeName || "Slovenia").slice(0, 32), awayName: String(stored.awayName || "Opponent").slice(0, 32), home: unique(stored.home), away: unique(stored.away) };
+        return { model: stored.model === "smart" ? "smart" : "classic", format: stored.format === "euroopen" ? "euroopen" : "eurobowl", homeName: String(stored.homeName || "Slovenia").slice(0, 32), awayName: String(stored.awayName || "Opponent").slice(0, 32), window: validWindow(stored.window), home: unique(stored.home), away: unique(stored.away) };
       } catch { return freshState(); }
     }
 
@@ -406,12 +550,10 @@ const html = `<!doctype html>
     const pct = (value, digits = 1) => (value * 100).toFixed(digits) + "%";
     const points = (value) => Math.round(value * 100) / 100;
     const escapeHtml = (value) => String(value).replace(/[&<>'"]/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" })[char]);
-    const KAPPA = 6;
-    const globalCounts = Object.values(DATA).flatMap(Object.values).reduce((sum, row) => [sum[0] + row[1], sum[1] + row[2], sum[2] + row[3]], [0, 0, 0]);
-    const globalTotal = globalCounts.reduce((sum, value) => sum + value, 0);
-    const PRIOR = globalCounts.map((value) => KAPPA * value / globalTotal);
+    const boardCount = () => state.format === "euroopen" ? 4 : 8;
+    const activeEntries = (side) => state[side].slice(0, boardCount());
     const options = (selected, side, index) => {
-      const used = new Set(state[side].filter((_, slot) => slot !== index).map((entry) => entry.roster));
+      const used = new Set(activeEntries(side).filter((_, slot) => slot !== index).map((entry) => entry.roster));
       return ROSTERS.map((roster) => {
         const unavailable = used.has(roster);
         return \`<option value="\${escapeHtml(roster)}"\${roster === selected ? " selected" : ""}\${unavailable ? " disabled" : ""}>\${escapeHtml(roster)}\${unavailable ? " · already selected" : ""}</option>\`;
@@ -434,7 +576,8 @@ const html = `<!doctype html>
       return { verdict: "loss", homePoints: 0, label: "secure loss" };
     }
 
-    function matchup(home, away, model = state.model) {
+    function matchup(home, away, model = state.model, dataset = ACTIVE) {
+      const DATA = dataset.data, PRIOR = dataset.prior;
       let raw = DATA[home] && DATA[home][away];
       let source = raw && raw[4] ? "derived from reciprocal record" : "direct";
       if (!raw) {
@@ -486,7 +629,7 @@ const html = `<!doctype html>
     }
 
     function exactAverageAssignment() {
-      const n = 8, m = ROSTERS.length;
+      const n = boardCount(), m = ROSTERS.length;
       const u = new Float64Array(n + 1), v = new Float64Array(m + 1);
       const p = new Int16Array(m + 1), way = new Int16Array(m + 1);
       for (let i = 1; i <= n; i++) {
@@ -514,7 +657,7 @@ const html = `<!doctype html>
           j0 = j1;
         } while (j0 !== 0);
       }
-      const assignment = Array(8);
+      const assignment = Array(n);
       for (let j = 1; j <= m; j++) if (p[j]) assignment[p[j] - 1] = ROSTERS[j - 1];
       return assignment;
     }
@@ -529,7 +672,7 @@ const html = `<!doctype html>
       const assignments = new Map();
       for (const proxy of proxies) {
         let beam = [{ chosen: [], used: new Set(), score: 0 }];
-        for (let board = 0; board < 8; board++) {
+        for (let board = 0; board < boardCount(); board++) {
           const next = [];
           for (const candidate of beam) for (const roster of ROSTERS) if (!candidate.used.has(roster)) {
             const row = matchup(roster, state.away[board].roster, "smart");
@@ -542,18 +685,20 @@ const html = `<!doctype html>
       }
       const exact = exactAverageAssignment();
       assignments.set(exact.join("|"), exact);
-      assignments.set(state.home.map((entry) => entry.roster).join("|"), state.home.map((entry) => entry.roster));
+      const current = activeEntries("home").map((entry) => entry.roster);
+      assignments.set(current.join("|"), current);
       return [...assignments.values()];
     }
 
     function evaluateAssignment(rosters) {
       const rows = rosters.map((roster, board) => matchup(roster, state.away[board].roster, "smart"));
       const probability = nationProbability(rows);
-      let cumulative = 0, lowScore = 0, highScore = 16;
-      const totals = [...probability.distribution].map(([difference, chance]) => [8 + difference, chance]).sort((a, b) => a[0] - b[0]);
+      const boards = boardCount(), maximum = boards * 2;
+      let cumulative = 0, lowScore = -1, highScore = maximum;
+      const totals = [...probability.distribution].map(([difference, chance]) => [boards + difference, chance]).sort((a, b) => a[0] - b[0]);
       for (const [score, chance] of totals) {
         cumulative += chance;
-        if (cumulative >= .1 && lowScore === 0) lowScore = score;
+        if (cumulative >= .1 && lowScore === -1) lowScore = score;
         if (cumulative >= .9) { highScore = score; break; }
       }
       return {
@@ -573,11 +718,12 @@ const html = `<!doctype html>
       button.textContent = "Calculating...";
       setTimeout(() => {
         const candidates = searchAssignments().map(evaluateAssignment);
-        const currentKey = state.home.map((entry) => entry.roster).join("|");
+        const currentRosters = activeEntries("home").map((entry) => entry.roster);
+        const currentKey = currentRosters.join("|");
         const exactAverage = evaluateAssignment(exactAverageAssignment());
         const bestWin = candidates.reduce((best, plan) => plan.win > best.win ? plan : best, candidates[0]);
         const safest = candidates.reduce((best, plan) => plan.loss < best.loss ? plan : best, candidates[0]);
-        const current = candidates.find((plan) => plan.rosters.join("|") === currentKey) || evaluateAssignment(state.home.map((entry) => entry.roster));
+        const current = candidates.find((plan) => plan.rosters.join("|") === currentKey) || evaluateAssignment(currentRosters);
         renderStrategies([
           { title: "Best average", note: "Exact assignment maximizing expected 2/1/0 coach points.", plan: exactAverage, exact: true },
           { title: "Highest win chance", note: "Best Nation-win probability found by multi-objective search.", plan: bestWin, exact: false },
@@ -589,18 +735,19 @@ const html = `<!doctype html>
     }
 
     function renderStrategies(strategies, current, searched) {
-      const classicRows = state.home.map((entry, index) => matchup(entry.roster, state.away[index].roster, "classic"));
-      const smartRows = state.home.map((entry, index) => matchup(entry.roster, state.away[index].roster, "smart"));
+      const maximum = boardCount() * 2;
+      const classicRows = activeEntries("home").map((entry, index) => matchup(entry.roster, state.away[index].roster, "classic"));
+      const smartRows = activeEntries("home").map((entry, index) => matchup(entry.roster, state.away[index].roster, "smart"));
       const classicProjected = points(classicRows.reduce((sum, row) => sum + row.homePoints, 0));
       const smartProjected = points(smartRows.reduce((sum, row) => sum + row.homePoints, 0));
       const classicProbability = nationProbability(classicRows);
       const smartProbability = nationProbability(smartRows);
-      $("#comparisonStrip").innerHTML = \`<div><small>Current classic projection</small><strong>\${classicProjected} / 16</strong></div><div><small>Current Smart projection</small><strong>\${smartProjected} / 16</strong></div><div><small>Classic win chance</small><strong>\${pct(classicProbability.win)}</strong></div><div><small>Smart win chance</small><strong>\${pct(smartProbability.win)}</strong></div>\`;
+      $("#comparisonStrip").innerHTML = \`<div><small>Current classic projection</small><strong>\${classicProjected} / \${maximum}</strong></div><div><small>Current Smart projection</small><strong>\${smartProjected} / \${maximum}</strong></div><div><small>Classic win chance</small><strong>\${pct(classicProbability.win)}</strong></div><div><small>Smart win chance</small><strong>\${pct(smartProbability.win)}</strong></div>\`;
       $("#strategyGrid").innerHTML = strategies.map(({ title, note, plan, exact }, strategyIndex) => {
         const same = plan.rosters.every((roster, index) => roster === state.home[index].roster);
         const list = plan.rosters.map((roster, index) => \`<li><span>\${index + 1}</span><b>\${escapeHtml(roster)}</b></li>\`).join("");
         const comparison = points(plan.expected - current.expected);
-        return \`<article class="strategy-card"><h3>\${title}<span class="model-badge">\${exact ? "exact" : "searched"}</span></h3><p>\${note} \${comparison === 0 ? "Matches" : (comparison > 0 ? "+" : "") + comparison + " expected points vs"} current. Likely score: \${plan.lowScore}–\${plan.highScore}.</p><div class="strategy-metrics"><div><small>Expected</small><strong>\${points(plan.expected)} / 16</strong></div><div><small>Win chance</small><strong>\${pct(plan.win)}</strong></div><div><small>Loss risk</small><strong>\${pct(plan.loss)}</strong></div></div><ul class="strategy-list">\${list}</ul><button class="button\${same ? "" : " primary"}" type="button" data-apply-strategy="\${strategyIndex}"\${same ? " disabled" : ""}>\${same ? "Current roster plan" : "Apply this plan"}</button></article>\`;
+        return \`<article class="strategy-card"><h3>\${title}<span class="model-badge">\${exact ? "exact" : "searched"}</span></h3><p>\${note} \${comparison === 0 ? "Matches" : (comparison > 0 ? "+" : "") + comparison + " expected points vs"} current. Likely score: \${plan.lowScore}–\${plan.highScore}.</p><div class="strategy-metrics"><div><small>Expected</small><strong>\${points(plan.expected)} / \${maximum}</strong></div><div><small>Win chance</small><strong>\${pct(plan.win)}</strong></div><div><small>Loss risk</small><strong>\${pct(plan.loss)}</strong></div></div><ul class="strategy-list">\${list}</ul><button class="button\${same ? "" : " primary"}" type="button" data-apply-strategy="\${strategyIndex}"\${same ? " disabled" : ""}>\${same ? "Current roster plan" : "Apply this plan"}</button></article>\`;
       }).join("");
       $("#strategyGrid").dataset.strategies = JSON.stringify(strategies.map(({ plan }) => plan.rosters));
       $("#strategyGrid").title = \`Risk strategies compared across \${searched} legal candidate assignments; best average is globally exact.\`;
@@ -610,7 +757,10 @@ const html = `<!doctype html>
       $("#matchups").innerHTML = rows.map((row, index) => {
         const statusColor = \`var(--\${row.verdict})\`;
         const expanded = openDetails.has(index);
-        const sourceNote = row.source === "direct" ? "Direct record from the selected Nation A roster file." : row.source === "no data" ? (state.model === "smart" ? "No direct games. Estimate uses the dataset-wide prior only." : "No supplied record in either direction. Classic mode treats it as neutral.") : "Nation A record reconstructed by reversing Nation B's supplied results.";
+        const home = state.home[index].roster, away = state.away[index].roster;
+        const base = matchup(home, away, state.model, BASELINE);
+        const shift = row.g && base.g ? (row.rate - base.rate) * 100 : null;
+        const sourceNote = row.source === "direct" ? (state.window.source === "weekly" ? \`Direct record from the weekly feed, \${escapeHtml(ACTIVE.label)}.\` : "Direct record from the selected Nation A roster file.") : row.source === "no data" ? (state.model === "smart" ? "No direct games. Estimate uses the dataset-wide prior only." : "No supplied record in either direction. Classic mode treats it as neutral.") : "Nation A record reconstructed by reversing Nation B's supplied results.";
         const rateCaption = state.model === "smart" ? \`90% range \${pct(row.low, 0)}–\${pct(row.high, 0)}\` : "";
         return \`<div class="matchup-row" style="--status-color:\${statusColor}" data-row="\${index}">
           <span class="slot">\${String(index + 1).padStart(2, "0")}</span>
@@ -636,6 +786,9 @@ const html = `<!doctype html>
             <div class="detail-cell"><small>Modeled loss chance</small><strong>\${pct(row.pL)}</strong></div>
             <div class="detail-cell"><small>Edge from even</small><strong>\${row.g ? (row.rate >= .5 ? "+" : "") + ((row.rate - .5) * 100).toFixed(1) + " pp" : "—"}</strong></div>
             <div class="detail-cell"><small>Direct data weight</small><strong>\${state.model === "smart" ? pct(row.g / (row.g + KAPPA), 0) : "100% raw"}</strong></div>
+            <div class="detail-cell"><small>\${WEEKLY ? "All weeks since ruleset" : "Baseline"}</small><strong>\${base.g ? \`\${pct(base.rate)} · \${base.w}–\${base.d}–\${base.l}\` : "No record"}</strong></div>
+            <div class="detail-cell"><small>Window shift</small><strong class="\${deltaClass(shift)}">\${shift === null ? "—" : formatDelta(shift)}</strong></div>
+            \${trendCell(home, away)}
           </div>
         </div>\`;
       }).join("");
@@ -667,22 +820,125 @@ const html = `<!doctype html>
       const direct = rows.filter((row) => row.source === "direct").length;
       const derived = rows.filter((row) => row.source.startsWith("derived")).length;
       const missing = rows.filter((row) => row.source === "no data").length;
-      $("#dataNote").textContent = \`Current slate: \${direct} direct · \${derived} reciprocal-derived · \${missing} no-data. Dataset: 31 roster CSV exports embedded in this file.\`;
+      const dataset = state.window.source === "weekly" && WEEKLY ? \`weekly feed (\${WEEKLY.sources.join(" + ")}) · \${ACTIVE.label} · \${gamesIn(state.window.from, state.window.to)} games · fetched \${shortDate(new Date(WEEKLY.generatedAt))}\` : "31 roster CSV exports embedded in this file";
+      $("#dataNote").textContent = \`Current slate: \${direct} direct · \${derived} reciprocal-derived · \${missing} no-data. Dataset: \${dataset}.\`;
+    }
+
+    function formatDelta(pp) {
+      return (pp > 0 ? "+" : pp < 0 ? "−" : "±") + Math.abs(pp).toFixed(1) + " pp";
+    }
+
+    function deltaClass(pp) {
+      return pp === null || Math.abs(pp) < .5 ? "delta-flat" : pp > 0 ? "delta-up" : "delta-down";
+    }
+
+    function renderWindow() {
+      const panel = $("#metaWindow");
+      panel.hidden = !WEEKLY;
+      if (!WEEKLY) return;
+      const weekly = state.window.source === "weekly";
+      const { from, to } = state.window;
+      $("#weeklySource").classList.toggle("active", weekly);
+      $("#csvSource").classList.toggle("active", !weekly);
+      const options = (selected, allowed) => WEEKLY.weeks.map((_, index) => \`<option value="\${index}"\${index === selected ? " selected" : ""}\${allowed(index) ? "" : " disabled"}>\${weekLabel(index)} · T−\${weeksToEb(index)}w · \${WEEK_GAMES[index] / 2}g</option>\`).join("");
+      $("#windowFrom").innerHTML = options(from, (index) => index <= to);
+      $("#windowTo").innerHTML = options(to, (index) => index >= from);
+      $("#windowFrom").disabled = $("#windowTo").disabled = !weekly;
+      document.querySelectorAll("[data-preset]").forEach((button) => {
+        const [presetFrom, presetTo] = presetRange(button.dataset.preset);
+        button.classList.toggle("active", weekly && presetFrom === from && presetTo === to);
+      });
+      const max = Math.max(...WEEK_GAMES, 1);
+      const ghosts = Math.max(0, weeksToEb(WEEK_COUNT - 1));
+      $("#weekStrip").innerHTML = WEEK_GAMES.map((games, index) => \`<button type="button" class="week-bar\${weekly && index >= from && index <= to ? " in" : ""}" data-week="\${index}" title="\${weekLabel(index)} · \${games / 2} games · T−\${weeksToEb(index)}w"><i style="height:\${Math.max(3, games / max * 100)}%"></i></button>\`).join("")
+        + Array.from({ length: ghosts }, (_, index) => index === ghosts - 1 ? \`<span class="week-bar eb" title="EuroBowl week · \${shortDate(EUROBOWL)}"><i></i></span>\` : '<span class="week-bar"></span>').join("");
+      $("#weekAxis").innerHTML = \`<span>\${shortDate(new Date(weekStart(0)))} · final ruleset</span><span>fetched through \${shortDate(isoDate(WEEKLY.to))}</span><span>EuroBowl \${shortDate(EUROBOWL)}</span>\`;
+      $("#windowSummary").textContent = weekly
+        ? \`\${to - from + 1} week\${to === from ? "" : "s"} · \${gamesIn(from, to)} of \${gamesIn(0, WEEK_COUNT - 1)} games · ends T−\${weeksToEb(to)}w before EuroBowl · feed fetched \${shortDate(new Date(WEEKLY.generatedAt))}\`
+        : "Frozen CSV snapshot (original roster exports). Meta drift still compares against the weekly feed.";
+    }
+
+    function trendCell(home, away) {
+      if (!WEEKLY) return "";
+      const cells = (WEEKLY.records[home] && WEEKLY.records[home][away]) || [];
+      if (!cells.length) return '<div class="detail-cell trend"><small>Weekly results</small><strong>No games in the weekly feed</strong></div>';
+      const perWeek = Array.from({ length: WEEK_COUNT }, () => [0, 0, 0]);
+      cells.forEach(([week, w, d, l]) => { perWeek[week] = [w, d, l]; });
+      const [from, to] = state.window.source === "weekly" ? [state.window.from, state.window.to] : [0, WEEK_COUNT - 1];
+      const width = WEEK_COUNT * 10, maxGames = Math.max(1, ...perWeek.map(([w, d, l]) => w + d + l));
+      let cw = 0, cd = 0, cl = 0;
+      const line = [];
+      const bars = perWeek.map(([w, d, l], index) => {
+        const games = w + d + l;
+        if (index >= from && index <= to) {
+          cw += w; cd += d; cl += l;
+          const total = cw + cd + cl;
+          if (total) line.push(\`\${index * 10 + 5},\${(2 + (1 - (cw + cd / 2) / total) * 30).toFixed(1)}\`);
+        }
+        if (!games) return "";
+        const height = 4 + games / maxGames * 14;
+        return \`<rect x="\${index * 10 + 1.5}" y="\${54 - height}" width="7" height="\${height}" rx="1" style="fill:var(--\${award((w + d / 2) / games).verdict})" opacity="\${index >= from && index <= to ? 1 : .28}"><title>\${weekLabel(index)}: \${w}–\${d}–\${l}</title></rect>\`;
+      }).join("");
+      const shade = \`<rect x="\${from * 10}" y="0" width="\${(to - from + 1) * 10}" height="54" style="fill:var(--accent)" opacity=".07"/>\`;
+      return \`<div class="detail-cell trend"><small>Weekly W–D–L bars · cumulative score rate in window</small><svg viewBox="0 0 \${width} 54" preserveAspectRatio="none" role="img" aria-label="Weekly trend for \${escapeHtml(home)} vs \${escapeHtml(away)}">\${shade}<line x1="0" x2="\${width}" y1="17" y2="17" style="stroke:var(--line-bright)" stroke-dasharray="3 3" vector-effect="non-scaling-stroke"/>\${bars}<polyline points="\${line.join(" ")}" fill="none" style="stroke:var(--accent)" stroke-width="1.6" vector-effect="non-scaling-stroke"/></svg><div class="trend-caption"><span>\${weekLabel(0)}</span><span>dashed = 50%</span><span>\${weekLabel(WEEK_COUNT - 1)}</span></div></div>\`;
+    }
+
+    function renderDrift(rows) {
+      const panel = $("#driftPanel");
+      panel.hidden = !WEEKLY;
+      if (!WEEKLY) return;
+      const baseRows = activeEntries("home").map((entry, index) => matchup(entry.roster, state.away[index].roster, state.model, BASELINE));
+      const maximum = boardCount() * 2;
+      const projected = (list) => points(list.reduce((sum, row) => sum + row.homePoints, 0));
+      const nowProb = nationProbability(rows), baseProb = nationProbability(baseRows);
+      const flips = rows.filter((row, index) => row.verdict !== baseRows[index].verdict).length;
+      const nowGames = rows.reduce((sum, row) => sum + row.g, 0), baseGames = baseRows.reduce((sum, row) => sum + row.g, 0);
+      const identical = state.window.source === "weekly" && state.window.from === 0 && state.window.to >= LAST_WEEK;
+      $("#driftCaption").textContent = identical ? "Window equals the full period — narrow it to see drift" : \`\${state.window.source === "weekly" ? ACTIVE.label : "CSV snapshot"} vs all weeks since ruleset · \${state.model}\`;
+      const pointDelta = points(projected(rows) - projected(baseRows));
+      $("#driftSummary").innerHTML = [
+        ["Projected score", \`\${projected(rows)} / \${maximum}\`, \`all weeks \${projected(baseRows)} · <span class="\${deltaClass(pointDelta * 10)}">\${pointDelta > 0 ? "+" : pointDelta < 0 ? "−" : "±"}\${Math.abs(pointDelta)}</span>\`],
+        [state.homeName + " win chance", pct(nowProb.win), \`all weeks \${pct(baseProb.win)} · <span class="\${deltaClass((nowProb.win - baseProb.win) * 100)}">\${formatDelta((nowProb.win - baseProb.win) * 100)}</span>\`],
+        ["Boards changing band", \`\${flips} / \${rows.length}\`, "points band differs from all weeks"],
+        ["Slate sample", \`\${nowGames} games\`, \`all weeks \${baseGames} games\`]
+      ].map(([label, value, sub]) => \`<div><small>\${escapeHtml(label)}</small><strong>\${value}</strong><small>\${sub}</small></div>\`).join("");
+      const show = (row) => state.model === "smart" || row.g ? pct(row.rate) : "N/A";
+      $("#driftRows").innerHTML = \`<div class="drift-row head"><span>#</span><span>Pairing</span><span class="col-base">All weeks</span><span class="col-window">Window</span><span class="col-delta">Shift</span><span class="col-points">Points</span></div>\` + rows.map((row, index) => {
+        const base = baseRows[index];
+        const shift = (row.g || state.model === "smart") && (base.g || state.model === "smart") ? (row.rate - base.rate) * 100 : null;
+        const pointShift = points(row.homePoints - base.homePoints);
+        return \`<div class="drift-row" style="--status-color:var(--\${row.verdict})"><span class="num">\${String(index + 1).padStart(2, "0")}</span><span><b>\${escapeHtml(state.home[index].roster)} vs \${escapeHtml(state.away[index].roster)}</b><small>\${base.verdict === row.verdict ? "same band" : \`\${base.label} → \${row.label}\`}</small></span><span class="col-base"><span class="val">\${show(base)}</span><br><small>\${base.g} g</small></span><span class="col-window"><span class="val" style="color:var(--\${row.verdict})">\${show(row)}</span><br><small>\${row.g} g</small></span><span class="col-delta val \${deltaClass(shift)}">\${shift === null ? "—" : formatDelta(shift)}</span><span class="col-points val \${deltaClass(pointShift * 10)}">\${points(base.homePoints)} → \${points(row.homePoints)}</span></div>\`;
+      }).join("");
+    }
+
+    function setWindow(patch) {
+      state.window = { ...state.window, ...patch };
+      if (state.window.from > state.window.to) [state.window.from, state.window.to] = [state.window.to, state.window.from];
+      clearStrategies();
+      render();
     }
 
     function render() {
       const smart = state.model === "smart";
+      const euroOpen = state.format === "euroopen";
       $("#classicModel").classList.toggle("active", !smart);
       $("#smartModel").classList.toggle("active", smart);
+      $("#euroBowlFormat").classList.toggle("active", !euroOpen);
+      $("#euroOpenFormat").classList.toggle("active", euroOpen);
       $("#modelTitle").textContent = smart ? "Smart calculation" : "Classic calculation";
       $("#modelDescription").textContent = smart ? "Bayesian smoothing, uncertainty-aware point bands, and model-based missing matchups." : "Raw historical percentages and fixed threshold bands.";
+      $("#workspace").setAttribute("aria-label", (euroOpen ? "EuroOpen" : "EuroBowl") + " roster matchups");
+      $("#optimizerDescription").textContent = \`Tests distinct Slovenian rosters against the \${boardCount()} opponent rosters currently entered. Board order does not change.\`;
       $("#homeName").value = state.homeName;
       $("#awayName").value = state.awayName;
       $("#homeNameDisplay").textContent = state.homeName;
       $("#awayNameDisplay").textContent = state.awayName;
-      const rows = state.home.map((entry, index) => matchup(entry.roster, state.away[index].roster));
+      applyWindow();
+      renderWindow();
+      const rows = activeEntries("home").map((entry, index) => matchup(entry.roster, state.away[index].roster));
       renderSummary(rows);
       renderMatchups(rows);
+      renderDrift(rows);
       renderInsights(rows);
       localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
     }
@@ -691,6 +947,14 @@ const html = `<!doctype html>
       $("#comparisonStrip").innerHTML = "";
       $("#strategyGrid").innerHTML = '<div class="strategy-placeholder">Inputs changed. Recalculate to compare updated roster strategies.</div>';
       delete $("#strategyGrid").dataset.strategies;
+    }
+
+    function repairFullNation(side) {
+      const used = new Set();
+      state[side].forEach((entry) => {
+        if (used.has(entry.roster)) entry.roster = ROSTERS.find((roster) => !used.has(roster));
+        used.add(entry.roster);
+      });
     }
 
     function editNation(side) {
@@ -716,7 +980,7 @@ const html = `<!doctype html>
       if (!target.matches(".coach")) return;
       state[target.dataset.side][Number(target.dataset.index)].coach = target.value;
       localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-      const rows = state.home.map((entry, index) => matchup(entry.roster, state.away[index].roster));
+      const rows = activeEntries("home").map((entry, index) => matchup(entry.roster, state.away[index].roster));
       renderInsights(rows);
     });
     $("#matchups").addEventListener("change", (event) => {
@@ -749,13 +1013,17 @@ const html = `<!doctype html>
     });
     $("#resetButton").addEventListener("click", () => {
       if (!confirm("Reset both nations, coaches and rosters?")) return;
+      const keepWindow = state.window;
       state = freshState();
+      state.window = keepWindow;
       openDetails.clear();
       clearStrategies();
       render();
     });
     $("#classicModel").addEventListener("click", () => { state.model = "classic"; render(); });
     $("#smartModel").addEventListener("click", () => { state.model = "smart"; render(); });
+    $("#euroBowlFormat").addEventListener("click", () => { state.format = "eurobowl"; repairFullNation("home"); repairFullNation("away"); openDetails.clear(); clearStrategies(); render(); });
+    $("#euroOpenFormat").addEventListener("click", () => { state.format = "euroopen"; openDetails.clear(); clearStrategies(); render(); });
     $("#optimizeButton").addEventListener("click", calculateStrategies);
     $("#strategyGrid").addEventListener("click", (event) => {
       const button = event.target.closest("[data-apply-strategy]");
@@ -770,6 +1038,21 @@ const html = `<!doctype html>
       window.scrollTo({ top: 0, behavior: "smooth" });
     });
     $("#printButton").addEventListener("click", () => window.print());
+    $("#weeklySource").addEventListener("click", () => setWindow({ source: "weekly" }));
+    $("#csvSource").addEventListener("click", () => setWindow({ source: "csv" }));
+    $("#windowFrom").addEventListener("change", (event) => setWindow({ from: Number(event.target.value), preset: null }));
+    $("#windowTo").addEventListener("change", (event) => setWindow({ to: Number(event.target.value), preset: null }));
+    document.querySelectorAll("[data-preset]").forEach((button) => button.addEventListener("click", () => {
+      const [from, to] = presetRange(button.dataset.preset);
+      setWindow({ source: "weekly", from, to, preset: button.dataset.preset });
+    }));
+    $("#weekStrip").addEventListener("click", (event) => {
+      const bar = event.target.closest("[data-week]");
+      if (!bar) return;
+      const week = Number(bar.dataset.week);
+      if (event.shiftKey) setWindow({ source: "weekly", from: Math.min(week, state.window.from), to: Math.max(week, state.window.from), preset: null });
+      else setWindow({ source: "weekly", from: week, to: Math.max(week, state.window.to), preset: null });
+    });
     render();
   </script>
 </body>
@@ -777,3 +1060,4 @@ const html = `<!doctype html>
 
 fs.writeFileSync(new URL("./index.html", import.meta.url), html);
 console.log(`Built index.html with ${rosters.length} rosters and ${Object.values(compact).reduce((sum, rows) => sum + Object.keys(rows).length, 0)} matchup records.`);
+console.log(weekly ? `Embedded weekly feed: ${weekly.weeks.length} weeks (${weekly.from} → ${weekly.to}), fetched ${weekly.generatedAt}.` : "No data/weekly/weekly.json found — run scripts/fetch-weekly.mjs for the meta window.");
