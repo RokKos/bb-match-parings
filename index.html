@@ -7,7 +7,11 @@
   <meta name="theme-color" content="#101310">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <title>Eightfold | Nation Matchup Lab</title>
+  <meta name="description" content="Blood Bowl team-tournament pairing calculator: race matchup records, projected board points and meta-window drift ahead of EuroBowl.">
+  <meta name="application-name" content="BB Match Pairings">
+  <meta name="apple-mobile-web-app-title" content="BB Pairings">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><g transform='rotate(-35 32 32)'><ellipse cx='32' cy='32' rx='29' ry='17.5' fill='%23874a22' stroke='%233a1d0b' stroke-width='2.5'/><path d='M14 20.5Q10.5 32 14 43.5M50 20.5Q53.5 32 50 43.5' fill='none' stroke='%23f4efe4' stroke-width='3.2' stroke-linecap='round'/><path d='M22.5 32h19M25 27.5v9M29 27.5v9M33 27.5v9M37 27.5v9' stroke='%23f4efe4' stroke-width='2.6' stroke-linecap='round'/></g></svg>">
+  <title>BB Match Pairings</title>
   <style>
     :root {
       color-scheme: dark;
@@ -35,71 +39,69 @@
     button, input, select { font: inherit; }
     button, select, input { color: inherit; }
     button { cursor: pointer; }
-    .shell { width: min(1480px, calc(100% - 40px)); margin: 0 auto; }
+    .shell { width: min(1480px, calc(100% - 40px)); margin: 0 auto; padding-top: 12px; }
     .top-actions { display: flex; gap: 8px; }
-    .roster-actions { display: flex; justify-content: flex-end; gap: 8px; padding: 16px 0 0; }
-    .button { min-height: 38px; padding: 0 14px; border: 1px solid var(--line-bright); border-radius: 8px; background: transparent; font-size: 12px; font-weight: 650; transition: background .16s ease, border-color .16s ease, transform .1s ease; }
+    .roster-actions { display: flex; align-items: center; justify-content: space-between; gap: 12px 20px; padding: 10px 0 0; }
+    .button { min-height: 34px; padding: 0 14px; border: 1px solid var(--line-bright); border-radius: 8px; background: transparent; font-size: 12px; font-weight: 650; transition: background .16s ease, border-color .16s ease, transform .1s ease; }
     .button:hover { background: var(--panel-2); border-color: var(--muted); }
     .button:active { transform: translateY(1px); }
     .button.primary { color: var(--accent-ink); background: var(--accent); border-color: var(--accent); }
     .button.primary:hover { background: #e4fa6f; }
-    .legend { display: flex; flex-wrap: wrap; gap: 16px; padding: 18px 0; font: 11px var(--mono); color: var(--muted); }
+    .legend { display: flex; flex-wrap: wrap; gap: 6px 14px; font: 10px var(--mono); color: var(--muted); }
     .legend span { display: inline-flex; align-items: center; gap: 7px; }
-    .analysis-bar { display: flex; align-items: center; justify-content: space-between; gap: 18px; margin-bottom: 14px; padding: 12px 14px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel); }
+    .analysis-bar { display: flex; align-items: center; justify-content: space-between; gap: 18px; margin-bottom: 10px; padding: 7px 7px 7px 14px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel); }
     .analysis-copy strong { display: block; font-size: 12px; }
     .analysis-copy span { color: var(--muted); font-size: 10px; }
     .analysis-controls { display: flex; gap: 8px; flex: 0 0 auto; }
     .segmented { display: grid; grid-template-columns: 1fr 1fr; flex: 0 0 auto; padding: 3px; border: 1px solid var(--line); border-radius: 9px; background: var(--bg); }
-    .segment { min-width: 82px; min-height: 34px; border: 0; border-radius: 6px; color: var(--muted); background: transparent; font-size: 11px; font-weight: 650; }
+    .segment { min-width: 82px; min-height: 30px; border: 0; border-radius: 6px; color: var(--muted); background: transparent; font-size: 11px; font-weight: 650; }
     .segment.active { color: var(--accent-ink); background: var(--accent); }
     .dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
     .c-win { color: var(--win); } .c-edge-win { color: var(--edge-win); } .c-draw { color: var(--draw); } .c-edge-loss { color: var(--edge-loss); } .c-loss { color: var(--loss); }
     .scoreboard { border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel); overflow: hidden; }
-    .score-grid { display: grid; grid-template-columns: minmax(0, 1fr) 190px minmax(0, 1fr); min-height: 150px; }
-    .nation-summary { padding: 26px; display: flex; flex-direction: column; justify-content: center; min-width: 0; }
+    .score-grid { display: grid; grid-template-columns: minmax(0, 1fr) 170px minmax(0, 1fr); }
+    .nation-summary { padding: 10px 20px; display: flex; flex-direction: column; justify-content: center; min-width: 0; }
     .nation-summary.away { text-align: right; }
     .nation-label { color: var(--muted); font: 10px var(--mono); letter-spacing: .14em; text-transform: uppercase; }
-    .nation-name-display { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: clamp(20px, 2vw, 30px); font-weight: 650; letter-spacing: -.03em; }
+    .nation-name-display { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: clamp(18px, 1.6vw, 24px); font-weight: 650; cursor: text; letter-spacing: -.03em; }
     .record { display: flex; gap: 12px; align-items: baseline; font: 12px var(--mono); color: var(--muted); }
     .away .record { justify-content: flex-end; }
     .record b { font-size: 17px; color: var(--text); }
-    .verdict { display: flex; flex-direction: column; align-items: center; justify-content: center; border-inline: 1px solid var(--line); background: #131713; text-align: center; }
-    .verdict strong { font: 34px/1 var(--mono); letter-spacing: -.06em; white-space: nowrap; }
-    .verdict span { margin-top: 9px; font: 10px var(--mono); letter-spacing: .12em; text-transform: uppercase; }
+    .verdict { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 8px; border-inline: 1px solid var(--line); background: #131713; text-align: center; }
+    .verdict strong { font: 26px/1 var(--mono); letter-spacing: -.06em; white-space: nowrap; }
+    .verdict span { margin-top: 5px; font: 10px var(--mono); letter-spacing: .12em; text-transform: uppercase; }
     .probability-row { display: grid; grid-template-columns: repeat(3, 1fr); border-top: 1px solid var(--line); }
-    .probability { padding: 17px 22px; border-right: 1px solid var(--line); }
+    .probability { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: baseline; gap: 0 10px; padding: 8px 20px 9px; border-right: 1px solid var(--line); }
     .probability:last-child { border-right: 0; }
-    .probability small { display: block; margin-bottom: 5px; color: var(--muted); font: 10px var(--mono); letter-spacing: .08em; text-transform: uppercase; }
-    .probability strong { font: 20px var(--mono); }
-    .prob-track { height: 3px; margin-top: 10px; overflow: hidden; background: var(--line); }
+    .probability small { overflow: hidden; color: var(--muted); font: 10px var(--mono); text-overflow: ellipsis; white-space: nowrap; letter-spacing: .08em; text-transform: uppercase; }
+    .probability strong { font: 16px var(--mono); }
+    .prob-track { grid-column: 1 / -1; height: 3px; margin-top: 6px; overflow: hidden; background: var(--line); }
     .prob-track i { display: block; width: 0; height: 100%; background: currentColor; transition: width .35s ease; }
-    .workspace { margin: 24px 0 24px; border-top: 1px solid var(--line); }
-    .workspace-head, .matchup-row { display: grid; grid-template-columns: 34px minmax(210px, 1fr) 88px minmax(210px, 1fr) 114px 78px 78px 78px 100px 30px; gap: 12px; align-items: center; }
-    .workspace-head { min-height: 54px; color: var(--muted); font: 10px var(--mono); letter-spacing: .1em; text-align: center; text-transform: uppercase; }
-    .matchup-row { min-height: 98px; border-top: 1px solid var(--line); position: relative; }
+    .workspace { margin: 10px 0 24px; border-top: 1px solid var(--line); }
+    .workspace-head, .matchup-row { display: grid; grid-template-columns: 30px minmax(150px, 1fr) 92px minmax(150px, 1fr) 100px 60px 70px 76px 96px 28px; gap: 10px; align-items: center; }
+    .workspace-head { min-height: 32px; color: var(--muted); font: 10px var(--mono); letter-spacing: .1em; text-align: center; text-transform: uppercase; }
+    .matchup-row { min-height: 52px; padding: 5px 0; border-top: 1px solid var(--line); position: relative; }
     .matchup-row:last-child { border-bottom: 1px solid var(--line); }
-    .matchup-row::before { content: ""; position: absolute; left: 0; top: 20px; bottom: 20px; width: 2px; background: var(--status-color, var(--draw)); opacity: .8; }
+    .matchup-row::before { content: ""; position: absolute; left: 0; top: 12px; bottom: 12px; width: 2px; background: var(--status-color, var(--draw)); opacity: .8; }
     .slot { color: var(--muted); font: 12px var(--mono); text-align: center; }
-    .team-entry { display: grid; grid-template-columns: minmax(0, .72fr) minmax(0, 1.28fr); gap: 8px; }
-    .away-entry { direction: rtl; }
-    .away-entry > * { direction: ltr; }
-    .field { width: 100%; height: 42px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); padding: 0 11px; outline: none; font-size: 13px; transition: border-color .16s ease, background .16s ease; }
+    .mobile-meta { display: none; }
+    .field { width: 100%; height: 38px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); padding: 0 11px; outline: none; font-size: 13px; transition: border-color .16s ease, background .16s ease; }
     .field:hover { border-color: var(--line-bright); }
     .field:focus { border-color: var(--accent); background: var(--panel-2); box-shadow: 0 0 0 2px rgba(217,243,74,.12); }
     input.field::placeholder { color: #737b72; opacity: 1; }
-    select.field { appearance: none; padding-right: 32px; background-image: linear-gradient(45deg, transparent 50%, var(--muted) 50%), linear-gradient(135deg, var(--muted) 50%, transparent 50%); background-position: calc(100% - 16px) 18px, calc(100% - 11px) 18px; background-size: 5px 5px; background-repeat: no-repeat; }
+    select.field { appearance: none; padding-right: 32px; background-image: linear-gradient(45deg, transparent 50%, var(--muted) 50%), linear-gradient(135deg, var(--muted) 50%, transparent 50%); background-position: calc(100% - 16px) 16px, calc(100% - 11px) 16px; background-size: 5px 5px; background-repeat: no-repeat; }
     .rate { text-align: center; }
-    .rate strong { display: block; color: var(--status-color, var(--draw)); font: 20px var(--mono); }
-    .rate small { color: var(--muted); font: 9px var(--mono); text-transform: uppercase; letter-spacing: .09em; }
+    .rate strong { display: block; color: var(--status-color, var(--draw)); font: 18px/1.15 var(--mono); }
+    .rate small { color: var(--muted); font: 8px var(--mono); white-space: nowrap; text-transform: uppercase; letter-spacing: .09em; }
     .stat { text-align: center; }
-    .stat strong { display: block; font: 13px var(--mono); }
-    .stat small { color: var(--muted); font-size: 10px; }
-    .outcome { justify-self: center; min-width: 94px; padding: 7px 8px; border: 1px solid currentColor; border-radius: 7px; color: var(--status-color, var(--draw)); font: 10px var(--mono); text-align: center; white-space: nowrap; text-transform: uppercase; letter-spacing: .05em; }
-    .detail-button { width: 30px; height: 30px; border: 1px solid var(--line); border-radius: 7px; color: var(--muted); background: transparent; font: 17px var(--mono); }
+    .stat strong { display: block; font: 12px/1.3 var(--mono); }
+    .stat small { color: var(--muted); font-size: 9px; }
+    .outcome { justify-self: center; min-width: 90px; padding: 5px 8px; border: 1px solid currentColor; border-radius: 7px; color: var(--status-color, var(--draw)); font: 10px var(--mono); text-align: center; white-space: nowrap; text-transform: uppercase; letter-spacing: .05em; }
+    .detail-button { width: 28px; height: 28px; border: 1px solid var(--line); border-radius: 7px; color: var(--muted); background: transparent; font: 17px var(--mono); }
     .detail-button:hover, .detail-button[aria-expanded="true"] { color: var(--text); border-color: var(--line-bright); background: var(--panel-2); }
-    .matchup-detail { grid-column: 2 / -1; display: none; grid-template-columns: 1.15fr 1fr 1fr 1fr 1fr; gap: 1px; margin: -5px 0 18px; background: var(--line); border: 1px solid var(--line); }
+    .matchup-detail { grid-column: 2 / -1; display: none; grid-template-columns: 1.15fr 1fr 1fr 1fr 1fr; gap: 1px; margin: 4px 0 8px; background: var(--line); border: 1px solid var(--line); }
     .matchup-detail.open { display: grid; }
-    .detail-cell { min-height: 76px; padding: 14px 16px; background: var(--panel); }
+    .detail-cell { min-height: 60px; padding: 10px 14px; background: var(--panel); }
     .detail-cell small { display: block; margin-bottom: 7px; color: var(--muted); font: 9px var(--mono); letter-spacing: .08em; text-transform: uppercase; }
     .detail-cell strong { font: 15px var(--mono); font-weight: 500; }
     .detail-cell.note strong { font-family: var(--sans); font-size: 12px; line-height: 1.45; }
@@ -179,58 +181,53 @@
     .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
     @media (max-width: 1180px) {
       .workspace { overflow-x: auto; }
-      .workspace-head, .matchup-row { min-width: 1060px; }
-      .matchup-detail { min-width: 1014px; }
+      .workspace-head, .matchup-row { min-width: 920px; }
+      .matchup-detail { min-width: 880px; }
     }
     @media (max-width: 760px) {
       .shell { width: min(100% - 24px, 1480px); }
       .top-actions { gap: 6px; }
-      .roster-actions { display: grid; grid-template-columns: repeat(3, 1fr); }
-      .button { min-height: 42px; padding: 0 10px; }
+      .roster-actions { flex-direction: column; align-items: stretch; }
+      .roster-actions .top-actions { display: grid; grid-template-columns: repeat(3, 1fr); }
+      .button { min-height: 38px; padding: 0 10px; }
       .button-label { display: none; }
-      .legend { justify-content: center; gap: 8px 14px; padding: 14px 0; font-size: 10px; }
-      .analysis-bar { align-items: stretch; flex-direction: column; }
-      .analysis-controls { display: grid; grid-template-columns: 1fr; }
+      .shell { padding-top: 8px; }
+      .legend { justify-content: center; gap: 4px 12px; font-size: 9px; }
+      .analysis-bar { padding: 4px; margin-bottom: 8px; }
+      .analysis-copy { display: none; }
+      .analysis-controls { display: grid; grid-template-columns: 1fr 1fr; width: 100%; gap: 4px; }
       .segmented { width: 100%; }
-      .score-grid { grid-template-columns: 1fr 1fr; grid-template-areas: "home away" "verdict verdict"; min-height: 0; }
-      .nation-summary { min-height: 86px; padding: 16px 14px; }
-      .nation-summary:first-child { grid-area: home; }
-      .nation-summary.away { grid-area: away; border-left: 1px solid var(--line); }
-      .nation-name-display { font-size: 17px; }
+      .segment { min-width: 0; min-height: 30px; font-size: 11px; }
+      .score-grid { grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); }
+      .nation-summary { padding: 8px 10px; }
+      .nation-name-display { font-size: 15px; }
       .record { gap: 7px; font-size: 10px; }
       .record b { font-size: 14px; }
-      .verdict { grid-area: verdict; min-height: 66px; border: 0; border-top: 1px solid var(--line); flex-direction: row; gap: 14px; }
-      .verdict strong { font-size: 28px; }
-      .verdict span { margin-top: 0; }
-      .probability-row { grid-template-columns: repeat(3, 1fr); }
-      .probability { min-width: 0; padding: 13px 10px; }
-      .probability small { min-height: 28px; font-size: 8px; line-height: 1.35; }
-      .probability strong { font-size: 16px; }
-      .workspace { margin: 16px 0 42px; overflow: visible; border-top: 0; }
+      .verdict { padding: 6px 10px; }
+      .verdict strong { font-size: 20px; }
+      .verdict span { margin-top: 3px; font-size: 8px; letter-spacing: .08em; }
+      .probability { padding: 6px 8px 7px; gap: 0 4px; }
+      .probability small { font-size: 8px; letter-spacing: .02em; }
+      .probability strong { font-size: 13px; }
+      .prob-track { margin-top: 4px; }
+      .workspace { margin: 8px 0 24px; overflow: visible; }
       .workspace-head { display: none; }
-      .matchup-row { min-width: 0; min-height: 0; margin-bottom: 12px; padding: 14px; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); grid-template-areas: "slot slot outcome outcome" "home home home home" "rate rate rate rate" "away away away away" "history games noloss sample" "toggle toggle toggle toggle" "details details details details"; gap: 10px 8px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel); }
-      .matchup-row:last-child { border-bottom: 1px solid var(--line); }
-      .matchup-row::before { top: 14px; bottom: 14px; left: -1px; width: 3px; border-radius: 3px; }
-      .slot { grid-area: slot; align-self: center; text-align: left; }
-      .home-entry { grid-area: home; }
-      .away-entry { grid-area: away; direction: ltr; }
-      .team-entry { grid-template-columns: minmax(0, .8fr) minmax(0, 1.2fr); }
-      .field { height: 46px; font-size: 16px; }
-      select.field { background-position: calc(100% - 16px) 20px, calc(100% - 11px) 20px; }
-      .rate { grid-area: rate; padding: 3px 0 5px; border-block: 1px solid var(--line); }
-      .rate strong { font-size: 24px; }
-      .history-stat { grid-area: history; }
-      .games-stat { grid-area: games; }
-      .noloss-stat { grid-area: noloss; }
-      .sample-stat { grid-area: sample; }
-      .stat { min-width: 0; text-align: center; }
-      .stat strong { overflow: hidden; font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
-      .stat small { display: block; font-size: 8px; }
-      .outcome { grid-area: outcome; justify-self: end; max-width: 150px; }
-      .detail-button { grid-area: toggle; width: 100%; height: 42px; margin-top: 2px; }
-      .matchup-detail { grid-area: details; min-width: 0; grid-column: auto; grid-template-columns: 1fr 1fr; margin: 0; }
-      .detail-cell { min-height: 68px; padding: 12px; }
-      .detail-cell.note, .detail-cell.trend { grid-column: 1 / -1; }
+      .matchup-row { min-width: 0; min-height: 0; padding: 5px 0 4px 6px; grid-template-columns: 18px minmax(0, 1fr) 52px minmax(0, 1fr) 26px; grid-template-areas: "slot home rate away toggle" ". meta meta meta ." "details details details details details"; gap: 2px 5px; }
+      .matchup-row::before { top: 7px; bottom: 7px; width: 3px; border-radius: 3px; }
+      .slot { grid-area: slot; font-size: 10px; text-align: left; }
+      .home-roster { grid-area: home; }
+      .away-roster { grid-area: away; }
+      .field { height: 34px; padding: 0 20px 0 7px; font-size: 16px; }
+      select.field { background-position: calc(100% - 12px) 15px, calc(100% - 7px) 15px; }
+      .rate { grid-area: rate; }
+      .rate strong { font-size: 15px; }
+      .rate small, .stat, .outcome { display: none; }
+      .mobile-meta { grid-area: meta; display: flex; justify-content: space-between; gap: 8px; overflow: hidden; color: var(--muted); font: 9px/1.3 var(--mono); white-space: nowrap; }
+      .mobile-meta b { color: var(--status-color, var(--draw)); font-weight: 500; }
+      .detail-button { grid-area: toggle; width: 26px; height: 26px; font-size: 15px; }
+      .matchup-detail { grid-area: details; min-width: 0; grid-column: 1 / -1; grid-template-columns: 1fr 1fr; margin: 4px 0 6px; }
+      .detail-cell { min-height: 0; padding: 9px 10px; }
+      .detail-cell.note, .detail-cell.trend, .detail-cell.shift { grid-column: 1 / -1; }
       .window-head { align-items: stretch; flex-direction: column; }
       .window-controls label, .window-controls select.field { width: 100%; }
       .preset-row { margin-left: 0; width: 100%; }
@@ -265,14 +262,6 @@
 </head>
 <body>
   <main class="shell">
-    <div class="legend" aria-label="Outcome thresholds">
-      <span class="c-win"><i class="dot"></i>≥60% · 2 pts</span>
-      <span class="c-edge-win"><i class="dot"></i>&gt;55% · 1.5 pts</span>
-      <span class="c-draw"><i class="dot"></i>45–55% · 1 pt</span>
-      <span class="c-edge-loss"><i class="dot"></i>&lt;45% · 0.5 pts</span>
-      <span class="c-loss"><i class="dot"></i>≤40% · 0 pts</span>
-    </div>
-
     <div class="analysis-bar">
       <div class="analysis-copy"><strong id="modelTitle">Classic calculation</strong><span id="modelDescription">Raw historical percentages and fixed threshold bands.</span></div>
       <div class="analysis-controls">
@@ -306,13 +295,22 @@
 
     <section class="workspace" id="workspace" aria-label="EuroBowl roster matchups">
       <div class="workspace-head">
-        <span>#</span><span>Home coach / roster</span><span>Score rate</span><span>Away roster / coach</span><span>Historical record</span><span>Games</span><span>No-loss</span><span>Sample</span><span>Points</span><span></span>
+        <span>#</span><span>Home roster</span><span>Score rate</span><span>Away roster</span><span>W–D–L</span><span>Games</span><span>No-loss</span><span>Sample</span><span>Points</span><span></span>
       </div>
       <div id="matchups"></div>
-      <div class="roster-actions top-actions">
-        <button class="button" id="swapButton" type="button" title="Swap nations">⇄ <span class="button-label">Swap sides</span></button>
-        <button class="button" id="resetButton" type="button">Reset</button>
-        <button class="button primary" id="printButton" type="button">Print <span class="button-label">report</span></button>
+      <div class="roster-actions">
+        <div class="legend" aria-label="Points per board by score rate">
+          <span class="c-win"><i class="dot"></i>≥60% · 2 pts</span>
+          <span class="c-edge-win"><i class="dot"></i>&gt;55% · 1.5 pts</span>
+          <span class="c-draw"><i class="dot"></i>45–55% · 1 pt</span>
+          <span class="c-edge-loss"><i class="dot"></i>&lt;45% · 0.5 pts</span>
+          <span class="c-loss"><i class="dot"></i>≤40% · 0 pts</span>
+        </div>
+        <div class="top-actions">
+          <button class="button" id="swapButton" type="button" title="Swap nations">⇄ <span class="button-label">Swap sides</span></button>
+          <button class="button" id="resetButton" type="button">Reset</button>
+          <button class="button primary" id="printButton" type="button">Print <span class="button-label">report</span></button>
+        </div>
       </div>
     </section>
 
@@ -443,7 +441,8 @@
       const { source, from, to } = state.window;
       ACTIVE = source === "csv" || !WEEKLY ? CSV_SET : makeDataset(windowCounts(from, to), `${weekLabel(from)} → ${weekLabel(to)}`);
     }
-    const STORAGE_KEY = "eightfold-matchup-v1";
+    const STORAGE_KEY = "bb-match-pairings-v1";
+    const LEGACY_STORAGE_KEY = "eightfold-matchup-v1";
     const DEFAULT_HOME = ["Amazons", "Bretonian", "Dark Elf", "Dwarf", "High Elf", "Human", "Lizardmen", "Wood Elf"].map(canonicalRoster);
     const DEFAULT_AWAY = ["Orc", "Shambling Undead", "Skaven", "Norse", "Chaos Dwarf", "Necromantic Horror", "Khorne", "Vampire"];
     const openDetails = new Set();
@@ -471,7 +470,7 @@
 
     function loadState() {
       try {
-        const stored = JSON.parse(localStorage.getItem(STORAGE_KEY));
+        const stored = JSON.parse(localStorage.getItem(STORAGE_KEY) || localStorage.getItem(LEGACY_STORAGE_KEY));
         if (!stored || !Array.isArray(stored.home) || !Array.isArray(stored.away) || stored.home.length !== 8 || stored.away.length !== 8) return freshState();
         const valid = (entry) => ({ coach: String(entry.coach || "").slice(0, 40), roster: ROSTERS.includes(entry.roster) ? entry.roster : ROSTERS[0] });
         const unique = (entries) => {
@@ -701,24 +700,19 @@
         const home = state.home[index].roster, away = state.away[index].roster;
         const base = matchup(home, away, state.model, BASELINE);
         const shift = row.g && base.g ? (row.rate - base.rate) * 100 : null;
-        const sourceNote = row.source === "direct" ? (state.window.source === "weekly" ? `Direct record from the weekly feed, ${escapeHtml(ACTIVE.label)}.` : "Direct record from the selected Nation A roster file.") : row.source === "no data" ? (state.model === "smart" ? "No direct games. Estimate uses the dataset-wide prior only." : "No supplied record in either direction. Classic mode treats it as neutral.") : "Nation A record reconstructed by reversing Nation B's supplied results.";
+        const sourceNote = row.source === "direct" ? (state.window.source === "weekly" ? `Direct record from the weekly feed, ${escapeHtml(ACTIVE.label)}.` : "Direct record from the home roster file.") : row.source === "no data" ? (state.model === "smart" ? "No direct games. Estimate uses the dataset-wide prior only." : "No supplied record in either direction. Classic mode treats it as neutral.") : "Home record reconstructed by reversing the away roster's supplied results.";
         const rateCaption = state.model === "smart" ? `90% range ${pct(row.low, 0)}–${pct(row.high, 0)}` : "";
         return `<div class="matchup-row" style="--status-color:${statusColor}" data-row="${index}">
           <span class="slot">${String(index + 1).padStart(2, "0")}</span>
-          <div class="team-entry home-entry">
-            <input class="field coach" data-side="home" data-index="${index}" value="${escapeHtml(state.home[index].coach)}" placeholder="Coach" aria-label="Nation A coach ${index + 1}">
-            <select class="field roster" data-side="home" data-index="${index}" aria-label="Nation A roster ${index + 1}">${options(state.home[index].roster, "home", index)}</select>
-          </div>
+          <select class="field roster home-roster" data-side="home" data-index="${index}" aria-label="Home roster ${index + 1}">${options(state.home[index].roster, "home", index)}</select>
           <div class="rate"><strong>${state.model === "smart" || row.g ? pct(row.rate) : "N/A"}</strong>${rateCaption ? `<small>${rateCaption}</small>` : ""}</div>
-          <div class="team-entry away-entry">
-            <input class="field coach" data-side="away" data-index="${index}" value="${escapeHtml(state.away[index].coach)}" placeholder="Coach" aria-label="Nation B coach ${index + 1}">
-            <select class="field roster" data-side="away" data-index="${index}" aria-label="Nation B roster ${index + 1}">${options(state.away[index].roster, "away", index)}</select>
-          </div>
-          <div class="stat history-stat"><strong>${row.g ? `${row.w}–${row.d}–${row.l}` : "No record"}</strong><small>W–D–L</small></div>
+          <select class="field roster away-roster" data-side="away" data-index="${index}" aria-label="Away roster ${index + 1}">${options(state.away[index].roster, "away", index)}</select>
+          <div class="stat history-stat"><strong>${row.g ? `${row.w}–${row.d}–${row.l}` : "No record"}</strong></div>
           <div class="stat games-stat"><strong>${row.g || "—"}</strong><small>played</small></div>
           <div class="stat noloss-stat"><strong>${row.g ? pct(row.noLoss) : "—"}</strong><small>W + D</small></div>
           <div class="stat sample-stat"><strong>${row.strength}</strong><small>strength</small></div>
           <div class="outcome" title="${row.label}">${points(row.homePoints)}–${points(row.awayPoints)} pts</div>
+          <div class="mobile-meta"><span>${row.g ? `${row.w}–${row.d}–${row.l} · ${row.g}g` : "no record"}${rateCaption ? " · " + rateCaption.replace("90% range ", "") : ""}</span><b>${points(row.homePoints)}–${points(row.awayPoints)} pts</b></div>
           <button class="detail-button" type="button" data-detail="${index}" aria-expanded="${expanded}" aria-label="Toggle details for pairing ${index + 1}">${expanded ? "−" : "+"}</button>
           <div class="matchup-detail${expanded ? " open" : ""}">
             <div class="detail-cell note"><small>Data source</small><strong>${sourceNote}</strong></div>
@@ -728,7 +722,7 @@
             <div class="detail-cell"><small>Edge from even</small><strong>${row.g ? (row.rate >= .5 ? "+" : "") + ((row.rate - .5) * 100).toFixed(1) + " pp" : "—"}</strong></div>
             <div class="detail-cell"><small>Direct data weight</small><strong>${state.model === "smart" ? pct(row.g / (row.g + KAPPA), 0) : "100% raw"}</strong></div>
             <div class="detail-cell"><small>${WEEKLY ? "All weeks since ruleset" : "Baseline"}</small><strong>${base.g ? `${pct(base.rate)} · ${base.w}–${base.d}–${base.l}` : "No record"}</strong></div>
-            <div class="detail-cell"><small>Window shift</small><strong class="${deltaClass(shift)}">${shift === null ? "—" : formatDelta(shift)}</strong></div>
+            <div class="detail-cell shift"><small>Window shift</small><strong class="${deltaClass(shift)}">${shift === null ? "—" : formatDelta(shift)}</strong></div>
             ${trendCell(home, away)}
           </div>
         </div>`;
@@ -743,9 +737,9 @@
       $("#verdict").className = `verdict c-${result}`;
       $("#verdict").innerHTML = `<strong>${homePoints}:${awayPoints}</strong><span>Projected ${result}</span>`;
       const probabilities = [
-        [state.homeName + " nation win", probability.win, "win"],
-        ["Nation draw", probability.draw, "draw"],
-        [state.awayName + " nation win", probability.loss, "loss"]
+        [state.homeName + " win", probability.win, "win"],
+        ["Draw", probability.draw, "draw"],
+        [state.awayName + " win", probability.loss, "loss"]
       ];
       $("#probabilities").innerHTML = probabilities.map(([label, value, type]) => `<div class="probability c-${type}"><small>${escapeHtml(label)}</small><strong>${pct(value)}</strong><div class="prob-track"><i style="width:${value * 100}%"></i></div></div>`).join("");
     }
