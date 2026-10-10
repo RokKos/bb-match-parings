@@ -712,7 +712,7 @@
           <div class="stat noloss-stat"><strong>${row.g ? pct(row.noLoss) : "—"}</strong><small>W + D</small></div>
           <div class="stat sample-stat"><strong>${row.strength}</strong><small>strength</small></div>
           <div class="outcome" title="${row.label}">${points(row.homePoints)}–${points(row.awayPoints)} pts</div>
-          <div class="mobile-meta"><span>${row.g ? `${row.w}–${row.d}–${row.l} · ${row.g}g` : "no record"}${rateCaption ? " · " + rateCaption.replace("90% range ", "") : ""}</span><b>${points(row.homePoints)}–${points(row.awayPoints)} pts</b></div>
+          <div class="mobile-meta"><span>${row.g ? `${row.w}–${row.d}–${row.l} · W+D ${pct(row.noLoss, 0)} · ${row.g}g` : "no record"}${rateCaption ? " · " + rateCaption.replace("90% range ", "") : ""}</span><b>${points(row.homePoints)}–${points(row.awayPoints)} pts</b></div>
           <button class="detail-button" type="button" data-detail="${index}" aria-expanded="${expanded}" aria-label="Toggle details for pairing ${index + 1}">${expanded ? "−" : "+"}</button>
           <div class="matchup-detail${expanded ? " open" : ""}">
             <div class="detail-cell note"><small>Data source</small><strong>${sourceNote}</strong></div>
